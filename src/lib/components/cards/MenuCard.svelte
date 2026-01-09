@@ -1,11 +1,13 @@
 <script lang="ts">
-  export let item = {
-    id: 1,
-    name: "Nasi Goreng Spesial",
-    price: 25000,
-    description: "Nasi goreng dengan telur, sosis, dan ayam suwir.",
-    image: "https://picsum.photos/seed/nasigoreng/200/200"
-  };
+  import { getOptimizedImageUrl } from "../../services/cloudinary";
+  export let item: {
+    id: string | number;
+    name: string;
+    price: number;
+    description: string;
+    image?: string;
+    primary_image?: string;
+  }; // This might be 'primary_image' or 'image' depending on mapping
   export let onAdd: (item: any) => void;
 </script>
 
@@ -15,10 +17,17 @@
     <p class="menu-desc">{item.description}</p>
     <div class="menu-footer">
       <span class="menu-price">Rp {item.price.toLocaleString()}</span>
-      <button class="add-btn bg-accent" on:click={() => onAdd(item)}>+ Tambah</button>
+      <button class="add-btn bg-accent" on:click={() => onAdd(item)}
+        >+ Tambah</button
+      >
     </div>
   </div>
-  <img src={item.image} alt={item.name} class="menu-image" />
+  <img
+    src={getOptimizedImageUrl(item.image || item.primary_image || "", 150)}
+    alt={item.name}
+    class="menu-image"
+    loading="lazy"
+  />
 </div>
 
 <style>

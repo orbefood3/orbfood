@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
   /* Primary - Biru Tua */
   --primary: #0f2a44;
@@ -47,13 +49,19 @@ body {
 
 #app {
   width: 100%;
-  max-width: 500px; /* Mobile focused */
   margin: 0 auto;
   min-height: 100vh;
   background-color: var(--bg-white);
   position: relative;
   display: flex;
   flex-direction: column;
+}
+
+/* Mobile constraint for user pages only */
+@media (min-width: 1024px) {
+  #app:not(.admin-mode):not(.shop-mode) {
+    max-width: 500px;
+  }
 }
 
 a {
@@ -72,11 +80,27 @@ button:active {
 }
 
 /* Utilities */
-.text-primary { color: var(--primary); }
-.text-accent { color: var(--accent); }
-.bg-primary { background-color: var(--primary); color: var(--primary-text); }
-.bg-accent { background-color: var(--accent); color: var(--accent-text); }
-.bg-soft { background-color: var(--bg-soft); }
+.text-primary {
+  color: var(--primary);
+}
+
+.text-accent {
+  color: var(--accent);
+}
+
+.bg-primary {
+  background-color: var(--primary);
+  color: var(--primary-text);
+}
+
+.bg-accent {
+  background-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.bg-soft {
+  background-color: var(--bg-soft);
+}
 
 .sticky-top {
   position: sticky;

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { supabase } from './supabase';
+  import { supabase } from '../../services/supabase';
   export let title: string = "Halaman";
   export let user: any = null;
 

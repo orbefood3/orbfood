@@ -1,39 +1,29 @@
 <script lang="ts">
-  import MenuCard from './MenuCard.svelte';
-  import CartBar from './CartBar.svelte';
+  import { onMount } from 'svelte';
+  import { supabase } from '../../services/supabase';
+  import MenuCard from '../../components/cards/MenuCard.svelte';
+  import CartBar from '../../components/navigation/CartBar.svelte';
+  import { addToCart } from '../../stores/cartStore';
 
-  export let store = {
-    name: "Sate Kambing Bang Kumis",
-    status: "Buka",
-    location: "Jl. Merdeka No. 123",
-    image: "https://picsum.photos/seed/sate/400/200"
-  };
+  export let store: any;
   export let onBack: () => void;
+  export let onViewCart: () => void;
 
-  let menuItems = [
-    { id: 1, name: "Sate Kambing (10 Tusuk)", price: 45000, description: "Sate kambing muda dengan bumbu kacang/kecap.", image: "https://picsum.photos/seed/sate/200/200" },
-    { id: 2, name: "Gulai Kambing", price: 35000, description: "Kuah gulai kental dengan daging kambing empuk.", image: "https://picsum.photos/seed/gulai/200/200" },
-    { id: 3, name: "Nasi Putih", price: 5000, description: "Nasi putih hangat.", image: "https://picsum.photos/seed/rice/200/200" },
-    { id: 4, name: "Es Teh Manis", price: 5000, description: "Es teh manis segar.", image: "https://picsum.photos/seed/tea/200/200" },
-  ];
+  let menuItems: any[] = [];
+  let loading = true;
 
-  let cart: any[] = [];
-  $: cartCount = cart.reduce((acc, item) => acc + (item.quantity || 1), 0);
-  $: cartTotal = cart.reduce((acc, item) => acc + (item.price * (item.quantity || 1)), 0);
-
-  function addToCart(item: any) {
-    const existing = cart.find(i => i.id === item.id);
-    if (existing) {
-      existing.quantity = (existing.quantity || 1) + 1;
-      cart = [...cart];
-    } else {
-      cart = [...cart, { ...item, quantity: 1 }];
-    }
-  }
-
-  function handleViewCart() {
-    alert("Checkout via WhatsApp akan muncul di sini!");
-  }
+  onMount(async () => {
+    if (!store?.id) return;
+    loading = true;
+    const { data } = await supabase
+      .from('menu_items')
+      .select('*')
+      .eq('shop_id', store.id)
+      .eq('is_available', true);
+    
+    menuItems = data || [];
+    loading = false;
+  });
 </script>
 
 <div class="store-page">
@@ -54,11 +44,12 @@
   <main class="menu-list">
     <h3>Menu Unggulan</h3>
     {#each menuItems as item}
-      <MenuCard {item} onAdd={addToCart} />
+      <MenuCard {item} onAdd={() => addToCart(item)} />
     {/each}
   </main>
 
-  <CartBar {cartCount} {cartTotal} onViewCart={handleViewCart} />
+  <div class="bottom-spacer"></div>
+  <CartBar {onViewCart} />
 </div>
 
 <style>

@@ -1,27 +1,83 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { supabase } from './lib/supabase';
-  import HomePage from './lib/HomePage.svelte';
-  import StorePage from './lib/StorePage.svelte';
-  import BottomNav from './lib/BottomNav.svelte';
-  import PlaceholderPage from './lib/PlaceholderPage.svelte';
-  import './app.css';
+  import { onMount } from "svelte";
+  import { supabase } from "./lib/services/supabase";
+  import HomePage from "./lib/pages/user/HomePage.svelte";
+  import StorePage from "./lib/pages/user/StorePage.svelte";
+  import BlogPage from "./lib/pages/user/BlogPage.svelte";
+  import OrdersPage from "./lib/pages/user/OrdersPage.svelte";
+  import ProfilePage from "./lib/pages/user/ProfilePage.svelte";
+  import CartPage from "./lib/pages/user/CartPage.svelte";
+  import CartBar from "./lib/components/navigation/CartBar.svelte";
+  import BukaTokoPage from "./lib/pages/user/BukaTokoPage.svelte";
+  import ShopDashboard from "./lib/pages/shop/ShopDashboard.svelte";
+  import AdminDashboard from "./lib/pages/admin/AdminDashboard.svelte";
+  import BottomNav from "./lib/components/navigation/BottomNav.svelte";
+  import PlaceholderPage from "./lib/pages/user/PlaceholderPage.svelte";
+  import "./app.css";
 
-  let activeTab = 'home';
+  let activeTab = "home";
   let selectedStore: any = null;
+  let showCart = false;
+  let showBukaToko = false;
   let user: any = null;
+  let profile: any = null;
 
   onMount(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       user = session?.user ?? null;
+      if (user) {
+        fetchProfile();
+        setupProfileListener();
+      }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       user = session?.user ?? null;
+      if (user) {
+        fetchProfile();
+        setupProfileListener();
+      } else {
+        profile = null;
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   });
+
+  let profileSubscription: any = null;
+
+  function setupProfileListener() {
+    if (profileSubscription) profileSubscription.unsubscribe();
+
+    profileSubscription = supabase
+      .channel("profile-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "user_profiles",
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          profile = payload.new;
+        },
+      )
+      .subscribe();
+  }
+
+  async function fetchProfile() {
+    const { data } = await supabase
+      .from("user_profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+    profile = data;
+  }
 
   function handleStoreSelect(store: any) {
     selectedStore = store;
@@ -30,83 +86,74 @@
   function handleBack() {
     selectedStore = null;
   }
+
+  function handleViewCart() {
+    showCart = true;
+  }
+
+  function handleCloseCart() {
+    showCart = false;
+  }
+
+  function handleBukaToko() {
+    showBukaToko = true;
+  }
 </script>
 
-<main id="main-content">
-  {#if selectedStore}
-    <StorePage store={selectedStore} onBack={handleBack} />
-  {:else}
-    {#if activeTab === 'home'}
-      <HomePage onStoreSelect={handleStoreSelect} />
-    {:else if activeTab === 'favorit'}
-      <PlaceholderPage title="Favorit Saya" {user} />
-    {:else if activeTab === 'pesanan'}
-      <PlaceholderPage title="Riwayat Pesanan" {user} />
-    {:else if activeTab === 'akun'}
-      {#if user}
-        <div class="profile-page">
-          <div class="header bg-primary">
-            <h1>Profil Saya</h1>
-          </div>
-          <div class="content">
-            <img src={user.user_metadata.avatar_url} alt="Avatar" class="avatar" />
-            <h2>{user.user_metadata.full_name}</h2>
-            <p>{user.email}</p>
-            <button class="logout-btn" on:click={() => supabase.auth.signOut()}>Logout</button>
-          </div>
-        </div>
-      {:else}
-        <PlaceholderPage title="Profil Saya" {user} />
-      {/if}
+<svelte:head>
+  {#if profile?.role === "admin"}
+    <script>
+      document.getElementById("app")?.classList.add("admin-mode");
+    </script>
+  {:else if profile?.role === "shop"}
+    <script>
+      document.getElementById("app")?.classList.add("shop-mode");
+    </script>
+  {/if}
+</svelte:head>
+
+<main
+  id="main-content"
+  class:full-width={profile?.role === "admin" || profile?.role === "shop"}
+>
+  {#if profile?.role === "shop"}
+    <ShopDashboard {user} {profile} />
+  {:else if profile?.role === "admin"}
+    <AdminDashboard />
+  {:else if showCart}
+    <CartPage {user} onBack={handleCloseCart} />
+  {:else if showBukaToko}
+    <BukaTokoPage
+      {user}
+      onBack={() => (showBukaToko = false)}
+      onSuccess={() => (showBukaToko = false)}
+    />
+  {:else if selectedStore}
+    <StorePage
+      store={selectedStore}
+      onBack={handleBack}
+      onViewCart={handleViewCart}
+    />
+  {:else if activeTab === "home"}
+    <HomePage onStoreSelect={handleStoreSelect} />
+  {:else if activeTab === "blog"}
+    <BlogPage />
+  {:else if activeTab === "pesanan"}
+    <OrdersPage {user} />
+  {:else if activeTab === "akun"}
+    {#if user}
+      <ProfilePage {user} {profile} onBukaToko={handleBukaToko} />
+    {:else}
+      <PlaceholderPage title="Profil Saya" {user} />
     {/if}
   {/if}
 </main>
 
-{#if !selectedStore}
+{#if !selectedStore && !showCart && !showBukaToko && profile?.role !== "shop" && profile?.role !== "admin"}
   <BottomNav bind:activeTab />
 {/if}
 
 <style>
-  .profile-page {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    text-align: center;
-  }
-
-  .header {
-    padding: 20px;
-    color: white;
-  }
-
-  .header h1 {
-    margin: 0;
-    font-size: 20px;
-  }
-
-  .content {
-    padding: 40px 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .avatar {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    margin-bottom: 8px;
-  }
-
-  .logout-btn {
-    margin-top: 24px;
-    padding: 10px 20px;
-    color: var(--danger);
-    background: none;
-    font-weight: 600;
-  }
-
   #main-content {
     flex: 1;
     display: flex;
@@ -114,5 +161,11 @@
     overflow-y: auto;
     padding-bottom: 20px;
     -webkit-overflow-scrolling: touch;
+  }
+
+  #main-content.full-width {
+    width: 100%;
+    max-width: none;
+    padding-bottom: 0;
   }
 </style>

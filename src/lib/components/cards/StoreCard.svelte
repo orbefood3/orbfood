@@ -9,7 +9,13 @@
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
-<div class="store-card rounded-lg shadow-soft" on:click={() => onSelect(store)}>
+<div
+  class="store-card shadow-soft rounded-lg"
+  on:click={() => onSelect(store)}
+  role="button"
+  tabindex="0"
+  on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelect(store); }}
+>
   <img src={store.image} alt={store.name} class="store-image" />
   <div class="store-info">
     <div class="store-header">

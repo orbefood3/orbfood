@@ -11,11 +11,11 @@
     <span class="label">Home</span>
   </button>
   <button 
-    class="nav-item {activeTab === 'favorit' ? 'active' : ''}" 
-    on:click={() => activeTab = 'favorit'}
+    class="nav-item {activeTab === 'blog' ? 'active' : ''}" 
+    on:click={() => activeTab = 'blog'}
   >
-    <span class="icon">❤️</span>
-    <span class="label">Favorit</span>
+    <span class="icon">🗞️</span>
+    <span class="label">Blog</span>
   </button>
   <button 
     class="nav-item {activeTab === 'pesanan' ? 'active' : ''}" 

@@ -1,9 +1,4 @@
-Ini pertanyaan **branding yang tepat** 👍
-Jawabanku singkat dulu, lalu detail biar kamu bisa langsung pakai.
 
-> **Kalau logo kamu biru tua + oranye → warna app-nya JANGAN rame.**
-
----
 
 ## 🎯 PRINSIP WARNA UNTUK orbefood
 
