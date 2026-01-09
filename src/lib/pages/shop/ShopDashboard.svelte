@@ -2,7 +2,9 @@
   import { supabase } from "../../services/supabase";
   import { onMount } from "svelte";
   import DashboardLayout from "../../components/layouts/DashboardLayout.svelte";
+  import logo from "../../../assets/logo-orb.png";
   import ShopMenus from "./ShopMenus.svelte";
+  import ShopSettings from "./ShopSettings.svelte";
   import { BarChart3, Utensils, Clock, Settings } from "lucide-svelte";
   import PlaceholderPage from "../user/PlaceholderPage.svelte";
 
@@ -22,7 +24,6 @@
       icon: Utensils,
       badge: shopData?.total_menus || null,
     },
-    { id: "hours", label: "Jam Operasional", icon: Clock, badge: null },
     { id: "settings", label: "Pengaturan Toko", icon: Settings, badge: null },
   ];
 
@@ -87,6 +88,17 @@
     on:toggleSidebar={() => (sidebarOpen = !sidebarOpen)}
     on:closeSidebar={() => (sidebarOpen = false)}
   >
+    <div
+      slot="header-icon"
+      class="w-full h-full flex items-center justify-center bg-white rounded-full overflow-hidden p-0 shadow-inner"
+    >
+      <img
+        src={logo}
+        alt="OrbFood Logo"
+        class="w-full h-full object-cover scale-150"
+      />
+    </div>
+
     <div class="max-w-7xl mx-auto">
       {#if activeTab === "dashboard"}
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -125,6 +137,8 @@
         </div>
       {:else if activeTab === "menu"}
         <ShopMenus shopId={shopData.id} />
+      {:else if activeTab === "settings"}
+        <ShopSettings shopId={shopData.id} />
       {:else}
         <div
           class="bg-white rounded-xl border border-gray-200 p-12 text-center"

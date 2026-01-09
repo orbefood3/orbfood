@@ -2,6 +2,7 @@
   import { supabase } from "../../services/supabase";
   import { onMount } from "svelte";
   import { fade, slide } from "svelte/transition";
+  import logo from "../../../assets/logo-orb.png";
   import {
     BarChart3,
     Store,
@@ -14,9 +15,9 @@
     Eye,
     TrendingUp,
     Users,
+    MapPin,
   } from "lucide-svelte";
 
-  // Shared Components
   // Shared Components
   import DashboardLayout from "../../components/layouts/DashboardLayout.svelte";
 
@@ -26,6 +27,7 @@
   import AdminBlog from "./AdminBlog.svelte";
   import AdminSettings from "./AdminSettings.svelte";
   import AdminUsers from "./AdminUsers.svelte";
+  import AdminVillages from "./AdminVillages.svelte";
 
   let activeView = "stats";
   let sidebarOpen = false;
@@ -42,6 +44,7 @@
     },
     { id: "shops", label: "Semua Toko", icon: Store, badge: null },
     { id: "users", label: "Pengguna", icon: Users, badge: null },
+    { id: "villages", label: "Manajemen Desa", icon: MapPin, badge: null },
     { id: "blog", label: "Blog & Artikel", icon: FileText, badge: null },
     { id: "settings", label: "Pengaturan", icon: Settings, badge: null },
   ];
@@ -133,6 +136,17 @@
   on:toggleSidebar={() => (sidebarOpen = !sidebarOpen)}
   on:closeSidebar={() => (sidebarOpen = false)}
 >
+  <div
+    slot="header-icon"
+    class="w-full h-full flex items-center justify-center bg-white rounded-full overflow-hidden p-0 shadow-inner"
+  >
+    <img
+      src={logo}
+      alt="OrbFood Logo"
+      class="w-full h-full object-cover scale-150"
+    />
+  </div>
+
   <div class="max-w-7xl mx-auto">
     {#if activeView === "stats"}
       <div class="space-y-6">
@@ -238,6 +252,8 @@
       <AdminUsers />
     {:else if activeView === "blog"}
       <AdminBlog />
+    {:else if activeView === "villages"}
+      <AdminVillages />
     {:else if activeView === "settings"}
       <AdminSettings />
     {/if}

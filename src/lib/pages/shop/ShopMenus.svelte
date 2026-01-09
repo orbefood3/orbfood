@@ -4,8 +4,6 @@
     import {
         uploadImage,
         getOptimizedImageUrl,
-        getPublicIdFromUrl,
-        deleteImage,
     } from "../../services/cloudinary";
     import PageWrapper from "../../components/ui/PageWrapper.svelte";
     import LoadingSpinner from "../../components/ui/LoadingSpinner.svelte";

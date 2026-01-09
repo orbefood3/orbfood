@@ -1,14 +1,21 @@
 <script lang="ts">
-  import { cartCount, cartTotal } from '../../stores/cartStore';
+  import { cartCount, cartTotal } from "../../stores/cartStore";
   export let onViewCart: () => void;
+  export let isVisible: boolean = true;
 </script>
 
 {#if $cartCount > 0}
-  <div class="cart-bar sticky-bottom shadow-soft">
+  <div
+    class="cart-bar sticky-bottom shadow-soft transition-transform duration-300 {isVisible
+      ? 'translate-y-0'
+      : 'translate-y-24'}"
+  >
     <div class="cart-summary bg-primary">
       <div class="cart-info">
         <span class="cart-icon">🛒</span>
-        <span class="cart-text">{$cartCount} Item | Rp {$cartTotal.toLocaleString()}</span>
+        <span class="cart-text"
+          >{$cartCount} Item | Rp {$cartTotal.toLocaleString()}</span
+        >
       </div>
       <button class="view-cart-btn" on:click={onViewCart}>
         Lihat Keranjang

@@ -22,6 +22,8 @@
   let user: any = null;
   let profile: any = null;
 
+  let isNavVisible = true;
+
   onMount(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       user = session?.user ?? null;
@@ -43,8 +45,16 @@
       }
     });
 
+    const hideNav = () => (isNavVisible = false);
+    const showNav = () => (isNavVisible = true);
+
+    window.addEventListener("hide-nav", hideNav);
+    window.addEventListener("show-nav", showNav);
+
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener("hide-nav", hideNav);
+      window.removeEventListener("show-nav", showNav);
     };
   });
 
@@ -150,7 +160,7 @@
 </main>
 
 {#if !selectedStore && !showCart && !showBukaToko && profile?.role !== "shop" && profile?.role !== "admin"}
-  <BottomNav bind:activeTab />
+  <BottomNav bind:activeTab isVisible={isNavVisible} />
 {/if}
 
 <style>

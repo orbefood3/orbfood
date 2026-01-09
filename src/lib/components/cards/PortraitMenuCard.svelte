@@ -1,88 +1,57 @@
 <script lang="ts">
-  import { addToCart } from '../../stores/cartStore';
+  import { getOptimizedImageUrl } from "../../services/cloudinary";
   export let item: any;
   export let onNavigate: () => void;
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
-<div class="portrait-card rounded-lg shadow-soft" on:click={onNavigate} role="button" tabindex="0">
-  <div class="image-container">
-    <img src={item.image} alt={item.name} class="menu-image" />
+<!-- svelte-ignore a11y-no-static-element-interactions -->
+<div
+  class="portrait-card rounded-2xl shadow-soft transition-all active:scale-95 cursor-pointer overflow-hidden border-none flex flex-col h-[200px] w-full"
+  on:click={onNavigate}
+>
+  <div class="image-container h-[130px] w-full relative">
+    <img
+      src={getOptimizedImageUrl(item.image || item.primary_image || "", 400)}
+      alt={item.name}
+      class="menu-image w-full h-full object-cover"
+    />
   </div>
-  <div class="info">
-    <h4 class="menu-name">{item.name}</h4>
-    <p class="shop-name">{item.shop?.name || item.shop}</p>
-    <div class="footer">
-      <span class="price">Rp {item.price.toLocaleString()}</span>
-      <button class="add-btn bg-accent" on:click|stopPropagation={() => addToCart(item)}>
-        + Tambah
-      </button>
+  <div class="info p-2 flex flex-col justify-between flex-1 bg-white">
+    <div>
+      <h4 class="menu-name text-xs font-black text-gray-900 truncate">
+        {item.name}
+      </h4>
+      <p class="shop-name text-[10px] text-gray-500 font-medium truncate">
+        {item.shop?.name || item.shop}
+      </p>
+    </div>
+    <div class="footer mt-auto pt-1 border-t border-gray-50">
+      <span class="price text-xs font-black text-primary"
+        >Rp {item.price.toLocaleString()}</span
+      >
     </div>
   </div>
 </div>
 
 <style>
   .portrait-card {
-    min-width: 160px;
-    width: 160px;
     background: white;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    border: 1px solid var(--bg-soft);
   }
 
   .image-container {
-    height: 140px;
-  }
-
-  .menu-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .info {
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    aspect-ratio: 4/3;
   }
 
   .menu-name {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 700;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.2;
   }
 
   .shop-name {
-    margin: 0;
-    font-size: 11px;
-    color: var(--text-hint);
-  }
-
-  .footer {
-    margin-top: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+    line-height: 1.2;
   }
 
   .price {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text-main);
-  }
-
-  .add-btn {
-    width: 100%;
-    padding: 6px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 700;
-    color: white;
+    line-height: 1;
   }
 </style>

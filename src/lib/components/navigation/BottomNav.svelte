@@ -1,32 +1,42 @@
 <script lang="ts">
-  export let activeTab: string = 'home';
+  import logo from "../../../assets/logo-orb.png";
+  export let activeTab: string = "home";
+  export let isVisible: boolean = true;
 </script>
 
-<nav class="bottom-nav sticky-bottom shadow-soft">
-  <button 
-    class="nav-item {activeTab === 'home' ? 'active' : ''}" 
-    on:click={() => activeTab = 'home'}
+<nav
+  class="bottom-nav sticky-bottom shadow-soft transition-transform duration-300 {isVisible
+    ? 'translate-y-0'
+    : 'translate-y-full'}"
+>
+  <button
+    class="nav-item {activeTab === 'home' ? 'active' : ''}"
+    on:click={() => (activeTab = "home")}
   >
-    <span class="icon">🏠</span>
+    <div
+      class="w-6 h-6 mb-1 flex items-center justify-center transition-all bg-white rounded-full overflow-hidden scale-110 shadow-sm"
+    >
+      <img src={logo} alt="Home" class="w-full h-full object-cover scale-150" />
+    </div>
     <span class="label">Home</span>
   </button>
-  <button 
-    class="nav-item {activeTab === 'blog' ? 'active' : ''}" 
-    on:click={() => activeTab = 'blog'}
+  <button
+    class="nav-item {activeTab === 'blog' ? 'active' : ''}"
+    on:click={() => (activeTab = "blog")}
   >
     <span class="icon">🗞️</span>
     <span class="label">Blog</span>
   </button>
-  <button 
-    class="nav-item {activeTab === 'pesanan' ? 'active' : ''}" 
-    on:click={() => activeTab = 'pesanan'}
+  <button
+    class="nav-item {activeTab === 'pesanan' ? 'active' : ''}"
+    on:click={() => (activeTab = "pesanan")}
   >
     <span class="icon">📜</span>
     <span class="label">Pesanan</span>
   </button>
-  <button 
-    class="nav-item {activeTab === 'akun' ? 'active' : ''}" 
-    on:click={() => activeTab = 'akun'}
+  <button
+    class="nav-item {activeTab === 'akun' ? 'active' : ''}"
+    on:click={() => (activeTab = "akun")}
   >
     <span class="icon">👤</span>
     <span class="label">Akun</span>

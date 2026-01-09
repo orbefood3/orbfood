@@ -14,12 +14,6 @@ export async function uploadImage(file: File): Promise<string> {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-    // Auto-format to WebP or best format for the browser
-    // Cloudinary handles this automatically usually, but we can force or hint if needed.
-    // Using f_auto,q_auto via URL transformation relies on delivery URL, 
-    // but for upload we just send the file.
-
-    // Note: We can add 'folder' if needed, e.g. formData.append("folder", "orbfood_menus");
 
     try {
         const response = await fetch(
@@ -44,67 +38,69 @@ export async function uploadImage(file: File): Promise<string> {
 }
 
 /**
- * Generates an optimized image URL (WebP, auto quality).
- * Use this when displaying images if the original URL is raw.
+ * Generates an optimized image URL (WebP/AVIF, auto quality).
+ * Ensures 'f_auto,q_auto' is always applied.
  * @param url The original Cloudinary URL
  * @param width Optional width to resize to
  */
 export function getOptimizedImageUrl(url: string, width?: number): string {
     if (!url || !url.includes("cloudinary.com")) return url;
 
-    // Simple insertion of transformation parameters
-    // Format: .../upload/{transformations}/v{version}/{public_id}
-    // We want: .../upload/f_auto,q_auto{,w_width}/...
-
+    // Split at /upload/ to insert transformations
     const parts = url.split("/upload/");
     if (parts.length !== 2) return url;
 
-    let transformation = "f_auto,q_auto";
-    if (width) {
-        transformation += `,w_${width}`;
+    const base = parts[0];
+    let rest = parts[1];
+
+    // If there are already transformations, they appear before 'vYYYY' or 'public_id'
+    // Format: .../upload/{transformations}/v{version}/{public_id}
+    // We want to force f_auto,q_auto
+
+    // Check if the first part of 'rest' is a transformation string (doesn't start with 'v' followed by numbers, and has more parts)
+    const restParts = rest.split("/");
+    if (restParts.length > 1 && !restParts[0].match(/^v\d+$/)) {
+        // It has existing transformations, remove them to replace with optimized ones
+        restParts.shift();
+        rest = restParts.join("/");
     }
 
-    return `${parts[0]}/upload/${transformation}/${parts[1]}`;
+    let transformation = "f_auto,q_auto";
+    if (width) {
+        transformation += `,w_${width},c_limit`; // c_limit keeps aspect ratio and doesn't upscale
+    }
+
+    return `${base}/upload/${transformation}/${rest}`;
 }
 
 /**
  * Extracts the public ID from a Cloudinary URL.
- * Supports URLs with folders and version numbers.
  * @param url The Cloudinary image URL
- * @returns The public ID or null if not found
  */
 export function getPublicIdFromUrl(url: string): string | null {
     if (!url || !url.includes("cloudinary.com")) return null;
 
     try {
-        // Regex to match the part after /upload/ and optional version (v12345/...), until the extension
-        // Example: .../upload/v12345678/folder/my_image.jpg -> folder/my_image
-        // Example: .../upload/folder/my_image.jpg -> folder/my_image
-
         const splitUrl = url.split("/upload/");
         if (splitUrl.length < 2) return null;
 
-        const afterUpload = splitUrl[1];
+        let afterUpload = splitUrl[1];
         const parts = afterUpload.split("/");
 
-        // Remove version if present (starts with 'v' and followed by numbers)
+        // Skip transformations if present
+        while (parts.length > 0 && !parts[0].match(/^v\d+$/) && parts.length > 1) {
+            parts.shift();
+        }
+
+        // Skip version if present
         if (parts.length > 0 && parts[0].match(/^v\d+$/)) {
             parts.shift();
         }
 
         const publicIdWithExtension = parts.join("/");
-        const publicId = publicIdWithExtension.substring(0, publicIdWithExtension.lastIndexOf("."));
-
-        return publicId;
+        const lastDotIndex = publicIdWithExtension.lastIndexOf(".");
+        return lastDotIndex !== -1 ? publicIdWithExtension.substring(0, lastDotIndex) : publicIdWithExtension;
     } catch (e) {
-        console.error("Error extracting public ID:", e);
         return null;
     }
-}
-
-return publicId;
-    } catch (e) {
-    console.error("Error extracting public ID:", e);
-    return null;
-}
 }

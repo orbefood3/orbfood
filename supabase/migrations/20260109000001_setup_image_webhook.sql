@@ -1,5 +1,4 @@
--- Enable the net extension if not already enabled
-CREATE EXTENSION IF NOT EXISTS "net" WITH SCHEMA "extensions";
+-- Webhook setup guide (Manual setup via Dashboard is recommended)
 
 -- Hook for deleting/updating images via Edge Function
 -- Note: Replace 'YOUR_PROJECT_REF' with your actual project reference or use the local URL
