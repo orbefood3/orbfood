@@ -15,6 +15,7 @@
   let notes = "";
   let showLoginPrompt = false;
   let isSubmitting = false;
+  let loginAgreed = false;
 
   // Track if we've already fetched shop info to avoid redundant calls
   let shopInfo: any = null;
@@ -226,8 +227,19 @@ Lokasi saya akan saya kirimkan setelah ini.`;
           nantinya.
         </p>
         <div class="modal-actions">
-          <button class="login-btn google-btn" on:click={loginWithGoogle}
-            >Login dengan Google</button
+          <label class="agreement">
+            <input type="checkbox" bind:checked={loginAgreed} />
+            <span>
+              Dengan login, saya menyetujui
+              <a href="#/privacy">Kebijakan Privasi</a>
+              dan
+              <a href="#/terms">Syarat Layanan</a>
+            </span>
+          </label>
+          <button
+            class="login-btn google-btn"
+            on:click={loginWithGoogle}
+            disabled={!loginAgreed}>Login dengan Google</button
           >
           <button class="skip-btn" on:click={submitOrder}
             >Lanjut Tanpa Login</button
@@ -473,9 +485,44 @@ Lokasi saya akan saya kirimkan setelah ini.`;
     color: white;
   }
 
+  .google-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
   .skip-btn {
     background: none;
     color: var(--text-hint);
     font-size: 13px;
+  }
+
+  .agreement {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-main);
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .agreement input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    accent-color: var(--primary);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .agreement span {
+    flex: 1;
+    line-height: 1.5;
+  }
+
+  .agreement a {
+    color: var(--primary);
+    text-decoration: underline;
+    font-weight: 600;
   }
 </style>

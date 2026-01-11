@@ -25,10 +25,16 @@ Vercel membutuhkan kunci API Supabase agar aplikasi bisa berjalan. Tambahkan var
 | `VITE_SUPABASE_ANON_KEY` | Anon Key project Supabase Anda |
 
 ### 4. Build Settings
-Vercel biasanya mendeteksi Vite secara otomatis. Pastikan pengaturannya seperti ini:
-- **Framework Preset**: `Vite`
-- **Build Command**: `npm run build`
-- **Output Directory**: `dist`
+
+### 5. Google Auth Setup
+Untuk mengaktifkan login dengan Google, ikuti langkah-langkah berikut:
+1. **Aktifkan Google Provider di Supabase**:
+   - Buka Supabase Dashboard Anda, navigasi ke **Authentication** -> **Providers**.
+   - Aktifkan **Google** dan masukkan `Client ID` serta `Client Secret` dari Google Cloud Console Anda.
+   - Tambahkan `https://<your-supabase-project-id>.supabase.co/auth/v1/callback` sebagai `Authorized redirect URIs` di Google Cloud Console.
+2. **Tambahkan Environment Variables di Vercel**:
+   - `VITE_GOOGLE_CLIENT_ID` | Client ID dari Google Cloud Console Anda
+   - `VITE_GOOGLE_CLIENT_SECRET` | Client Secret dari Google Cloud Console Anda
 
 ---
 
@@ -40,9 +46,6 @@ OrbFood memiliki fitur pencarian berbasis area (Desa/Kelurahan) yang sangat kuat
 - **Gunakan Kata Kunci Lokal**: Masukkan nama desa atau kelurahan di dalam deskripsi toko. Contoh: *"Warung Bakso terenak di Desa Genteng..."*
 - **Kategori yang Jelas**: Pastikan memilih kategori yang tepat (e.g., Kuliner, Minuman) karena user sering memfilter berdasarkan kategori.
 
-### 2. URL Toko yang Unik (Deep Linking)
-Setiap toko memiliki link unik: `https://orbfood.vercel.app/#/shop/[slug-toko]`.
-- **Bagikan Link**: Gunakan tombol **"Bagikan Toko"** di dashboard untuk menyebarkan link ke status WhatsApp atau bio Instagram.
 - **Indexable**: Link ini dapat di-index oleh mesin pencari karena menggunakan routing yang konsisten.
 
 ### 3. Statistik Interaksi

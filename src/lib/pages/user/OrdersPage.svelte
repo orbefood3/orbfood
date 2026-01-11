@@ -8,6 +8,7 @@
 
   let orders: any[] = [];
   let loading = true;
+  let agreed = false;
 
   onMount(fetchOrders);
 
@@ -38,6 +39,7 @@
   };
 
   async function loginWithGoogle() {
+    if (!agreed) return;
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: window.location.origin },
@@ -59,10 +61,22 @@
           Login agar riwayat pesanan dan ulasan kamu tersimpan rapi di sini.
         </p>
         <div class="actions">
-          <button class="login-btn google-btn" on:click={loginWithGoogle}>
+          <label class="agreement">
+            <input type="checkbox" bind:checked={agreed} />
+            <span>
+              Dengan login, saya menyetujui
+              <a href="#/privacy">Kebijakan Privasi</a>
+              dan
+              <a href="#/terms">Syarat Layanan</a>
+            </span>
+          </label>
+          <button
+            class="login-btn google-btn"
+            on:click={loginWithGoogle}
+            disabled={!agreed}
+          >
             Login dengan Google
           </button>
-          <button class="login-btn wa-btn"> Login dengan WhatsApp </button>
         </div>
       </div>
     {:else}
@@ -196,9 +210,39 @@
     color: white;
   }
 
-  .wa-btn {
-    background: #25d366;
-    color: white;
+  .google-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .agreement {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-main);
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .agreement input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    accent-color: var(--primary);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .agreement span {
+    flex: 1;
+    line-height: 1.5;
+  }
+
+  .agreement a {
+    color: var(--primary);
+    text-decoration: underline;
+    font-weight: 600;
   }
 
   /* Logged In */

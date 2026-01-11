@@ -14,6 +14,8 @@
   import AdminDashboard from "./lib/pages/admin/AdminDashboard.svelte";
   import BottomNav from "./lib/components/navigation/BottomNav.svelte";
   import PlaceholderPage from "./lib/pages/user/PlaceholderPage.svelte";
+  import PrivacyPolicyPage from "./lib/pages/legal/PrivacyPolicyPage.svelte";
+  import TermsOfServicePage from "./lib/pages/legal/TermsOfServicePage.svelte";
   import ToastContainer from "./lib/components/ui/ToastContainer.svelte";
   import "./app.css";
 
@@ -22,6 +24,7 @@
   let selectedArticle: any = null;
   let showCart = false;
   let showBukaToko = false;
+  let currentLegalPage: "privacy" | "terms" | null = null;
   let user: any = null;
   let profile: any = null;
 
@@ -94,9 +97,15 @@
     } else if (hash === "" || hash === "#/") {
       selectedStore = null;
       selectedArticle = null;
+      currentLegalPage = null;
     } else if (hash === "#/blog") {
       selectedArticle = null;
       activeTab = "blog";
+      currentLegalPage = null;
+    } else if (hash === "#/privacy") {
+      currentLegalPage = "privacy";
+    } else if (hash === "#/terms") {
+      currentLegalPage = "terms";
     }
   }
 
@@ -180,7 +189,21 @@
   id="main-content"
   class:full-width={profile?.role === "admin" || profile?.role === "shop"}
 >
-  {#if profile?.role === "shop"}
+  {#if currentLegalPage === "privacy"}
+    <PrivacyPolicyPage
+      onBack={() => {
+        currentLegalPage = null;
+        window.location.hash = "#/";
+      }}
+    />
+  {:else if currentLegalPage === "terms"}
+    <TermsOfServicePage
+      onBack={() => {
+        currentLegalPage = null;
+        window.location.hash = "#/";
+      }}
+    />
+  {:else if profile?.role === "shop"}
     <ShopDashboard {user} {profile} />
   {:else if profile?.role === "admin"}
     <AdminDashboard />
@@ -214,14 +237,19 @@
     <OrdersPage {user} />
   {:else if activeTab === "akun"}
     {#if user}
-      <ProfilePage {user} {profile} onBukaToko={handleBukaToko} />
+      <ProfilePage
+        {user}
+        {profile}
+        onBukaToko={handleBukaToko}
+        onNavigate={(tab) => (activeTab = tab)}
+      />
     {:else}
       <PlaceholderPage title="Profil Saya" {user} />
     {/if}
   {/if}
 </main>
 
-{#if !selectedStore && !selectedArticle && !showCart && !showBukaToko && profile?.role !== "shop" && profile?.role !== "admin"}
+{#if !selectedStore && !selectedArticle && !showCart && !showBukaToko && !currentLegalPage && profile?.role !== "shop" && profile?.role !== "admin"}
   <BottomNav bind:activeTab isVisible={isNavVisible} />
 {/if}
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { supabase } from "../../services/supabase";
+  import { villagesCache, shopsCache } from "../../stores/cacheStore";
   import StoreCard from "../../components/cards/StoreCard.svelte";
   import PortraitMenuCard from "../../components/cards/PortraitMenuCard.svelte";
   import MenuCard from "../../components/cards/MenuCard.svelte";
@@ -30,23 +31,36 @@
   onMount(async () => {
     loading = true;
 
-    // Fetch Villages
-    const { data: vData } = await supabase
-      .from("villages")
-      .select("*")
-      .order("name");
-    villages = vData || [];
+    // Try to get villages from cache first
+    const cachedVillages = villagesCache.get();
+    if (cachedVillages) {
+      villages = cachedVillages;
+    } else {
+      // Fetch Villages from Supabase
+      const { data: vData } = await supabase
+        .from("villages")
+        .select("*")
+        .order("name");
+      villages = vData || [];
+      villagesCache.set(villages);
+    }
 
-    // Fetch All Stores with villages
-    const { data: storeData } = await supabase
-      .from("shops")
-      .select("*, villages(name)")
-      .eq("is_active", true)
-      .eq("is_verified", true);
+    // Try to get shops from cache first
+    const cachedShops = shopsCache.get();
+    if (cachedShops) {
+      allStores = cachedShops;
+    } else {
+      // Fetch All Stores with villages from Supabase
+      const { data: storeData } = await supabase
+        .from("shops")
+        .select("*, villages(name)")
+        .eq("is_active", true)
+        .eq("is_verified", true);
+      allStores = storeData || [];
+      shopsCache.set(allStores);
+    }
 
-    allStores = storeData || [];
-
-    // Initial Menu Fetch
+    // Initial Menu Fetch (menus are not cached as they change more frequently)
     await fetchNextPage(true);
     loading = false;
   });

@@ -27,7 +27,7 @@
     loading = true;
     const { data } = await supabase
       .from("blog_posts")
-      .select("*, author:user_profiles(full_name)")
+      .select("*, author:user_profiles(display_name)")
       .eq("status", "published")
       .order("created_at", { ascending: false });
 
@@ -49,7 +49,7 @@
   $: normalArticles = filteredArticles.slice(1);
 </script>
 
-<div class="blog-container min-h-screen bg-gray-50 pb-24">
+<div class="blog-container bg-gray-50 pb-24">
   <!-- Header Section -->
   <header class="bg-white border-b border-gray-100 sticky top-0 z-30 px-4 py-4">
     <div class="max-w-2xl mx-auto space-y-4">
@@ -206,10 +206,10 @@
                     day: "numeric",
                   })}
                 </span>
-                {#if article.author?.full_name}
+                {#if article.author?.display_name}
                   <span class="flex items-center gap-1">
                     <User size={10} />
-                    {article.author.full_name}
+                    {article.author.display_name}
                   </span>
                 {/if}
               </div>

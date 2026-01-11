@@ -1,31 +1,38 @@
 <script lang="ts">
-  import { supabase } from '../../services/supabase';
+  import { supabase } from "../../services/supabase";
   export let user: any = null;
   export let profile: any = null;
   export let onBukaToko: () => void;
+  export let onNavigate: (tab: string) => void = () => {};
 
   const menuItems = [
-    { icon: "📜", label: "Riwayat Pesanan" },
-    { icon: "📍", label: "Alamat Pengiriman" },
-    { icon: "⭐", label: "Ulasan Saya" },
-    { icon: "❓", label: "Bantuan" },
-    { icon: "ℹ️", label: "Tentang Aplikasi" },
+    { icon: "📜", label: "Riwayat Pesanan", action: "pesanan" },
   ];
 
   async function handleLogout() {
     await supabase.auth.signOut();
+  }
+
+  function handleMenuClick(action: string) {
+    if (action) {
+      onNavigate(action);
+    }
   }
 </script>
 
 <div class="profile-page">
   <header class="profile-header bg-primary">
     <div class="user-info">
-      <img src={user.user_metadata.avatar_url} alt="Avatar" class="avatar shadow-soft" />
+      <img
+        src={user.user_metadata.avatar_url}
+        alt="Avatar"
+        class="avatar shadow-soft"
+      />
       <div class="text-info">
         <h2>{profile?.display_name || user.user_metadata.full_name}</h2>
         <p>{user.email}</p>
         <div class="flex gap-2">
-          <span class="auth-badge uppercase">{profile?.role || 'User'}</span>
+          <span class="auth-badge uppercase">{profile?.role || "User"}</span>
           <span class="auth-badge opacity-70">Google Account</span>
         </div>
       </div>
@@ -33,8 +40,11 @@
   </header>
 
   <main class="profile-menu">
-    {#if profile?.role === 'user'}
-      <button class="buka-toko-card rounded-lg shadow-soft" on:click={onBukaToko}>
+    {#if profile?.role === "user"}
+      <button
+        class="buka-toko-card rounded-lg shadow-soft"
+        on:click={onBukaToko}
+      >
         <div class="buka-toko-content">
           <span class="icon">🟦</span>
           <div class="text">
@@ -47,7 +57,7 @@
     {/if}
 
     {#each menuItems as item}
-      <button class="menu-item">
+      <button class="menu-item" on:click={() => handleMenuClick(item.action)}>
         <span class="menu-icon">{item.icon}</span>
         <span class="menu-label">{item.label}</span>
         <span class="arrow">›</span>
@@ -67,6 +77,8 @@
     flex-direction: column;
     flex: 1;
     background: var(--bg-soft);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .profile-header {
@@ -84,7 +96,7 @@
     width: 64px;
     height: 64px;
     border-radius: 50%;
-    border: 3px solid rgba(255,255,255,0.2);
+    border: 3px solid rgba(255, 255, 255, 0.2);
   }
 
   .text-info h2 {
@@ -102,7 +114,7 @@
   .auth-badge {
     display: inline-block;
     font-size: 10px;
-    background: rgba(255,255,255,0.15);
+    background: rgba(255, 255, 255, 0.15);
     padding: 2px 8px;
     border-radius: 10px;
     margin-top: 4px;

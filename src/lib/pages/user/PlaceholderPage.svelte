@@ -1,16 +1,19 @@
 <script lang="ts">
-  import { supabase } from '../../services/supabase';
+  import { supabase } from "../../services/supabase";
   export let title: string = "Halaman";
   export let user: any = null;
 
+  let agreed = false;
+
   async function loginWithGoogle() {
+    if (!agreed) return;
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
+      provider: "google",
       options: {
-        redirectTo: window.location.origin
-      }
+        redirectTo: window.location.origin,
+      },
     });
-    if (error) console.error('Error logging in:', error.message);
+    if (error) console.error("Error logging in:", error.message);
   }
 </script>
 
@@ -25,7 +28,20 @@
     {:else}
       <div class="illustration">🔒</div>
       <p>Silakan login untuk melihat halaman ini</p>
-      <button class="bg-accent" on:click={loginWithGoogle}>Login dengan Google</button>
+
+      <label class="agreement">
+        <input type="checkbox" bind:checked={agreed} />
+        <span>
+          Dengan login, saya menyetujui
+          <a href="#/privacy">Kebijakan Privasi</a>
+          dan
+          <a href="#/terms">Syarat Layanan</a>
+        </span>
+      </label>
+
+      <button class="bg-accent" on:click={loginWithGoogle} disabled={!agreed}>
+        Login dengan Google
+      </button>
     {/if}
   </div>
 </div>
@@ -69,5 +85,41 @@
     border-radius: 8px;
     font-weight: 600;
     color: white;
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .agreement {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-main);
+    cursor: pointer;
+    text-align: left;
+    max-width: 300px;
+  }
+
+  .agreement input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    accent-color: var(--primary);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .agreement span {
+    flex: 1;
+    line-height: 1.5;
+  }
+
+  .agreement a {
+    color: var(--primary);
+    text-decoration: underline;
+    font-weight: 600;
   }
 </style>

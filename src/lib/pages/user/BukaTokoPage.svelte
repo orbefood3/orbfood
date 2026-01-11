@@ -10,10 +10,16 @@
   let whatsapp = "";
   let loading = false;
   let submitted = false;
+  let agreed = false;
 
   async function handleSubmit() {
     if (!name || !whatsapp || !village) {
       toasts.info("Mohon isi semua data");
+      return;
+    }
+
+    if (!agreed) {
+      toasts.info("Mohon setujui Kebijakan Privasi dan Syarat Layanan");
       return;
     }
 
@@ -88,10 +94,20 @@
           />
         </div>
 
+        <label class="agreement">
+          <input type="checkbox" bind:checked={agreed} />
+          <span>
+            Saya menyetujui
+            <a href="#/privacy" target="_blank">Kebijakan Privasi</a>
+            dan
+            <a href="#/terms" target="_blank">Syarat Layanan</a>
+          </span>
+        </label>
+
         <button
           class="submit-btn bg-accent"
           on:click={handleSubmit}
-          disabled={loading}
+          disabled={loading || !agreed}
         >
           {loading ? "Mengirim..." : "AJUKAN TOKO"}
         </button>
@@ -200,5 +216,39 @@
     border-radius: 20px;
     font-weight: 700;
     color: white;
+  }
+
+  .agreement {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-main);
+    cursor: pointer;
+    margin-top: 8px;
+  }
+
+  .agreement input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    accent-color: var(--primary);
+    cursor: pointer;
+  }
+
+  .agreement span {
+    flex: 1;
+    line-height: 1.5;
+  }
+
+  .agreement a {
+    color: var(--primary);
+    text-decoration: underline;
+    font-weight: 600;
+  }
+
+  .submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 </style>
