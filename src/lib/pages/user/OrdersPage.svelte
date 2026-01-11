@@ -1,20 +1,46 @@
 <script lang="ts">
-  import { supabase } from '../../services/supabase';
+  import { onMount } from "svelte";
+  import { supabase } from "../../services/supabase";
   export let user: any = null;
 
-  let activeTab = 'Semua';
-  const tabs = ['Semua', 'Diproses', 'Selesai', 'Batal'];
+  let activeTab = "Semua";
+  const tabs = ["Semua", "Diproses", "Selesai", "Batal"];
 
-  const mockOrders = [
-    { store: "Sate Bang Kumis", status: "Selesai", date: "8 Jan 2024, 12:30", total: 45000, color: "var(--success)" },
-    { store: "Es Teh Jumbo", status: "Diproses", date: "8 Jan 2024, 14:15", total: 10000, color: "var(--accent)" },
-    { store: "Bakso Granat", status: "Batal", date: "7 Jan 2024, 19:00", total: 25000, color: "var(--danger)" },
-  ];
+  let orders: any[] = [];
+  let loading = true;
+
+  onMount(fetchOrders);
+
+  async function fetchOrders() {
+    if (!user) return;
+    loading = true;
+
+    // Fetch orders joined with shop names
+    const { data, error } = await supabase
+      .from("order_history")
+      .select("*, shops(name)")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching orders:", error);
+    } else {
+      orders = data || [];
+    }
+    loading = false;
+  }
+
+  const statusMap: Record<string, { label: string; color: string }> = {
+    sent_to_wa: { label: "Diproses", color: "var(--accent)" },
+    completed: { label: "Selesai", color: "var(--success)" },
+    cancelled: { label: "Batal", color: "var(--danger)" },
+    pending: { label: "Pending", color: "var(--text-hint)" },
+  };
 
   async function loginWithGoogle() {
     await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin }
+      provider: "google",
+      options: { redirectTo: window.location.origin },
     });
   }
 </script>
@@ -29,22 +55,22 @@
       <div class="empty-state">
         <div class="illustration">🍱</div>
         <h2>Masuk untuk melihat riwayat pesanan</h2>
-        <p>Login agar riwayat pesanan dan ulasan kamu tersimpan rapi di sini.</p>
+        <p>
+          Login agar riwayat pesanan dan ulasan kamu tersimpan rapi di sini.
+        </p>
         <div class="actions">
           <button class="login-btn google-btn" on:click={loginWithGoogle}>
             Login dengan Google
           </button>
-          <button class="login-btn wa-btn">
-            Login dengan WhatsApp
-          </button>
+          <button class="login-btn wa-btn"> Login dengan WhatsApp </button>
         </div>
       </div>
     {:else}
       <section class="tabs-scroll">
         {#each tabs as tab}
-          <button 
-            class="tab-chip {activeTab === tab ? 'active' : ''}" 
-            on:click={() => activeTab = tab}
+          <button
+            class="tab-chip {activeTab === tab ? 'active' : ''}"
+            on:click={() => (activeTab = tab)}
           >
             {tab}
           </button>
@@ -52,24 +78,48 @@
       </section>
 
       <div class="order-list">
-        {#each mockOrders as order}
-          <div class="order-card shadow-soft rounded-lg">
-            <div class="order-header">
-              <span class="store-name">{order.store}</span>
-              <span class="status-badge" style="color: {order.color}; background: {order.color}22">
-                {order.status}
-              </span>
-            </div>
-            <p class="order-date">{order.date}</p>
-            <div class="order-footer">
-              <span class="order-total">Rp {order.total.toLocaleString()}</span>
-              <div class="order-actions">
-                <button class="action-btn text-muted">Detail</button>
-                <button class="action-btn bg-accent">Pesan Lagi</button>
+        {#if loading}
+          {#each Array(3) as _}
+            <div class="h-24 bg-gray-100 rounded-lg animate-pulse mb-3"></div>
+          {/each}
+        {:else if orders.length === 0}
+          <div class="py-12 text-center text-gray-400">
+            <p>Belum ada riwayat pesanan.</p>
+          </div>
+        {:else}
+          {#each orders as order}
+            {@const status = statusMap[order.status] || statusMap["pending"]}
+            <div class="order-card shadow-soft rounded-lg">
+              <div class="order-header">
+                <span class="store-name">{order.shops?.name || "Toko"}</span>
+                <span
+                  class="status-badge"
+                  style="color: {status.color}; background: {status.color}22"
+                >
+                  {status.label}
+                </span>
+              </div>
+              <p class="order-date">
+                {new Date(order.created_at).toLocaleDateString("id-ID", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+              <div class="order-footer">
+                <span class="order-total"
+                  >Rp {order.total_price.toLocaleString()}</span
+                >
+                <div class="order-actions">
+                  <button class="action-btn text-muted">Detail</button>
+                  <button class="action-btn bg-accent">Pesan Lagi</button>
+                </div>
               </div>
             </div>
-          </div>
-        {/each}
+          {/each}
+        {/if}
       </div>
     {/if}
   </main>
@@ -147,7 +197,7 @@
   }
 
   .wa-btn {
-    background: #25D366;
+    background: #25d366;
     color: white;
   }
 

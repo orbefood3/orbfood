@@ -1,5 +1,5 @@
-
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-nocheck
+import { serve } from "http/server.ts";
 
 const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
@@ -58,7 +58,7 @@ async function deleteFromCloudinary(publicId: string) {
     return await response.json();
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
     if (req.method === "OPTIONS") {
         return new Response("ok", { headers: corsHeaders });
     }
@@ -76,6 +76,8 @@ serve(async (req) => {
             columns = ["primary_image"];
         } else if (table === "shops") {
             columns = ["logo_url", "banner_url"];
+        } else if (table === "blog_posts") {
+            columns = ["cover_image"];
         }
 
         if (columns.length === 0) {
@@ -113,7 +115,7 @@ serve(async (req) => {
             status: 200,
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Cleanup error:", error.message);
         return new Response(JSON.stringify({ error: error.message }), {
             headers: { "Content-Type": "application/json" },

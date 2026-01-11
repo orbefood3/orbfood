@@ -7,30 +7,38 @@
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div
-  class="portrait-card rounded-2xl shadow-soft transition-all active:scale-95 cursor-pointer overflow-hidden border-none flex flex-col h-[200px] w-full"
+  class="portrait-card rounded-2xl shadow-soft transition-all active:scale-95 cursor-pointer overflow-hidden border-none flex flex-col {item.price !==
+  undefined
+    ? 'h-[180px]'
+    : 'h-[155px]'} w-[140px] flex-shrink-0"
   on:click={onNavigate}
 >
-  <div class="image-container h-[130px] w-full relative">
+  <div class="image-container h-[100px] w-full relative">
     <img
-      src={getOptimizedImageUrl(item.image || item.primary_image || "", 400)}
+      src={getOptimizedImageUrl(
+        item.image || item.primary_image || item.logo_url || "",
+        400,
+      )}
       alt={item.name}
       class="menu-image w-full h-full object-cover"
     />
   </div>
-  <div class="info p-2 flex flex-col justify-between flex-1 bg-white">
+  <div class="info p-2 flex flex-col justify-start flex-1 bg-white">
     <div>
       <h4 class="menu-name text-xs font-black text-gray-900 truncate">
         {item.name}
       </h4>
       <p class="shop-name text-[10px] text-gray-500 font-medium truncate">
-        {item.shop?.name || item.shop}
+        {item.villages?.name || item.shop?.name || item.shop || ""}
       </p>
     </div>
-    <div class="footer mt-auto pt-1 border-t border-gray-50">
-      <span class="price text-xs font-black text-primary"
-        >Rp {item.price.toLocaleString()}</span
-      >
-    </div>
+    {#if item.price !== undefined}
+      <div class="footer mt-auto pt-1 border-t border-gray-50">
+        <span class="price text-xs font-black text-primary"
+          >Rp {item.price.toLocaleString()}</span
+        >
+      </div>
+    {/if}
   </div>
 </div>
 

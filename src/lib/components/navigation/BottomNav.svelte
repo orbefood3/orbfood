@@ -13,12 +13,8 @@
     class="nav-item {activeTab === 'home' ? 'active' : ''}"
     on:click={() => (activeTab = "home")}
   >
-    <div
-      class="w-6 h-6 mb-1 flex items-center justify-center transition-all bg-white rounded-full overflow-hidden scale-110 shadow-sm"
-    >
-      <img src={logo} alt="Home" class="w-full h-full object-cover scale-150" />
-    </div>
-    <span class="label">Home</span>
+    <span class="icon">🏠</span>
+    <span class="label">Beranda</span>
   </button>
   <button
     class="nav-item {activeTab === 'blog' ? 'active' : ''}"

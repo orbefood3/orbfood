@@ -4,6 +4,7 @@
   import HomePage from "./lib/pages/user/HomePage.svelte";
   import StorePage from "./lib/pages/user/StorePage.svelte";
   import BlogPage from "./lib/pages/user/BlogPage.svelte";
+  import BlogDetailPage from "./lib/pages/user/BlogDetailPage.svelte";
   import OrdersPage from "./lib/pages/user/OrdersPage.svelte";
   import ProfilePage from "./lib/pages/user/ProfilePage.svelte";
   import CartPage from "./lib/pages/user/CartPage.svelte";
@@ -13,10 +14,12 @@
   import AdminDashboard from "./lib/pages/admin/AdminDashboard.svelte";
   import BottomNav from "./lib/components/navigation/BottomNav.svelte";
   import PlaceholderPage from "./lib/pages/user/PlaceholderPage.svelte";
+  import ToastContainer from "./lib/components/ui/ToastContainer.svelte";
   import "./app.css";
 
   let activeTab = "home";
   let selectedStore: any = null;
+  let selectedArticle: any = null;
   let showCart = false;
   let showBukaToko = false;
   let user: any = null;
@@ -51,12 +54,51 @@
     window.addEventListener("hide-nav", hideNav);
     window.addEventListener("show-nav", showNav);
 
+    // Initial routing handle
+    handleHashChange();
+    window.addEventListener("hashchange", handleHashChange);
+
     return () => {
       subscription.unsubscribe();
       window.removeEventListener("hide-nav", hideNav);
       window.removeEventListener("show-nav", showNav);
+      window.removeEventListener("hashchange", handleHashChange);
     };
   });
+
+  async function handleHashChange() {
+    const hash = window.location.hash;
+    if (hash.startsWith("#/shop/")) {
+      const slug = hash.replace("#/shop/", "");
+      if (selectedStore?.slug !== slug) {
+        const { data } = await supabase
+          .from("shops")
+          .select("*")
+          .eq("slug", slug)
+          .single();
+        if (data) selectedStore = data;
+      }
+    } else if (hash.startsWith("#/blog/")) {
+      const slug = hash.replace("#/blog/", "");
+      if (selectedArticle?.slug !== slug) {
+        const { data } = await supabase
+          .from("blog_posts")
+          .select("*")
+          .eq("slug", slug)
+          .single();
+        if (data) {
+          selectedArticle = data;
+          activeTab = "blog";
+        }
+      }
+    } else if (hash === "" || hash === "#/") {
+      selectedStore = null;
+      selectedArticle = null;
+    } else if (hash === "#/blog") {
+      selectedArticle = null;
+      activeTab = "blog";
+    }
+  }
 
   let profileSubscription: any = null;
 
@@ -91,10 +133,22 @@
 
   function handleStoreSelect(store: any) {
     selectedStore = store;
+    window.location.hash = `#/shop/${store.slug}`;
   }
 
   function handleBack() {
     selectedStore = null;
+    window.location.hash = "#/";
+  }
+
+  function handleArticleSelect(article: any) {
+    selectedArticle = article;
+    window.location.hash = `#/blog/${article.slug}`;
+  }
+
+  function handleBlogBack() {
+    selectedArticle = null;
+    window.location.hash = "#/blog";
   }
 
   function handleViewCart() {
@@ -147,7 +201,15 @@
   {:else if activeTab === "home"}
     <HomePage onStoreSelect={handleStoreSelect} />
   {:else if activeTab === "blog"}
-    <BlogPage />
+    {#if selectedArticle}
+      <BlogDetailPage
+        article={selectedArticle}
+        onBack={handleBlogBack}
+        onArticleSelect={handleArticleSelect}
+      />
+    {:else}
+      <BlogPage onArticleSelect={handleArticleSelect} />
+    {/if}
   {:else if activeTab === "pesanan"}
     <OrdersPage {user} />
   {:else if activeTab === "akun"}
@@ -159,9 +221,11 @@
   {/if}
 </main>
 
-{#if !selectedStore && !showCart && !showBukaToko && profile?.role !== "shop" && profile?.role !== "admin"}
+{#if !selectedStore && !selectedArticle && !showCart && !showBukaToko && profile?.role !== "shop" && profile?.role !== "admin"}
   <BottomNav bind:activeTab isVisible={isNavVisible} />
 {/if}
+
+<ToastContainer />
 
 <style>
   #main-content {

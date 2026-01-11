@@ -1,10 +1,6 @@
 <script lang="ts">
-  export let store = {
-    name: "Toko Enak",
-    status: "Buka",
-    priceRange: "Rp 15k - 50k",
-    image: "https://picsum.photos/seed/food1/400/200"
-  };
+  import { getOptimizedImageUrl } from "../../services/cloudinary";
+  export let store: any;
   export let onSelect: (store: any) => void;
 </script>
 
@@ -14,18 +10,51 @@
   on:click={() => onSelect(store)}
   role="button"
   tabindex="0"
-  on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelect(store); }}
+  on:keydown={(e) => {
+    if (e.key === "Enter" || e.key === " ") onSelect(store);
+  }}
 >
-  <img src={store.image} alt={store.name} class="store-image" />
-  <div class="store-info">
+  <div class="relative h-40">
+    <img
+      src={getOptimizedImageUrl(store.banner_url || store.image || "", 600)}
+      alt={store.name}
+      class="store-image"
+    />
+    <div
+      class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"
+    ></div>
+
+    <!-- Logo Overlay -->
+    <div
+      class="absolute -bottom-4 left-4 w-12 h-12 rounded-xl bg-white p-1 shadow-lg border border-gray-100 overflow-hidden"
+    >
+      <img
+        src={getOptimizedImageUrl(store.logo_url || store.image || "", 100)}
+        alt="Logo"
+        class="w-full h-full object-cover rounded-lg"
+      />
+    </div>
+  </div>
+
+  <div class="store-info mt-2">
     <div class="store-header">
       <h3 class="store-name">{store.name}</h3>
-      <span class="status-badge {store.status === 'Buka' ? 'open' : 'closed'}">
-        {store.status === 'Buka' ? '🟢 Buka' : '🔴 Tutup'}
+      <span class="status-badge {store.is_open ? 'open' : 'closed'}">
+        {store.is_open ? "🟢 Buka" : "🔴 Tutup"}
       </span>
     </div>
-    <p class="store-price">{store.priceRange}</p>
-    <button class="view-menu-btn bg-accent">Lihat Menu</button>
+    <div class="flex items-center gap-2 mb-3">
+      <span
+        class="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold uppercase"
+        >{store.category}</span
+      >
+      {#if store.villages?.name}
+        <span class="text-[10px] text-gray-400 font-medium"
+          >📍 {store.villages.name}</span
+        >
+      {/if}
+    </div>
+    <button class="view-menu-btn bg-primary text-white">Lihat Menu</button>
   </div>
 </div>
 

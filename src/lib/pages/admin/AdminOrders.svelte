@@ -1,19 +1,22 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { supabase } from "../../services/supabase";
+  import { toasts } from "../../stores/toastStore";
+  import { CheckCircle2, XCircle, Clock, Package } from "lucide-svelte";
 
   export let shopId: string | null = null;
 
   let orders: any[] = [];
   let loading = true;
 
+  onMount(() => {
+    if (shopId) fetchOrders();
+  });
+
   $: if (shopId) {
     fetchOrders();
-  } else if (!shopId) {
-    // If used without shopId, maybe show recent orders or nothing?
-    // User requested to hide global orders, so we might just wait for shopId.
+  } else {
     orders = [];
-    loading = false;
   }
 
   async function fetchOrders() {
@@ -27,10 +30,61 @@
       query = query.eq("shop_id", shopId);
     }
 
-    const { data } = await query;
-    orders = data || [];
+    const { data, error } = await query;
+    if (error) {
+      toasts.error("Gagal mengambil data pesanan");
+    } else {
+      orders = data || [];
+    }
     loading = false;
   }
+
+  async function updateStatus(orderId: string, status: string) {
+    const { error } = await supabase
+      .from("order_history")
+      .update({ status })
+      .eq("id", orderId);
+
+    if (error) {
+      toasts.error("Gagal mengupdate status: " + error.message);
+    } else {
+      toasts.success(
+        `Pesanan berhasil di-${status === "completed" ? "selesaikan" : "batalkan"}`,
+      );
+      fetchOrders();
+    }
+  }
+
+  function formatItems(items: any[] | null) {
+    if (!items || items.length === 0) return "Tidak ada item";
+    return items
+      .map((i: any) => `${i.qty || i.quantity || 1}x ${i.name}`)
+      .join(", ");
+  }
+
+  const statusMap: Record<string, { label: string; color: string; icon: any }> =
+    {
+      sent_to_wa: {
+        label: "Diproses",
+        color: "bg-blue-100 text-blue-700 border-blue-200",
+        icon: Clock,
+      },
+      completed: {
+        label: "Selesai",
+        color: "bg-green-100 text-green-700 border-green-200",
+        icon: CheckCircle2,
+      },
+      cancelled: {
+        label: "Batal",
+        color: "bg-red-100 text-red-700 border-red-200",
+        icon: XCircle,
+      },
+      pending: {
+        label: "Pending",
+        color: "bg-gray-100 text-gray-700 border-gray-200",
+        icon: Clock,
+      },
+    };
 </script>
 
 <div class="space-y-4">
@@ -71,34 +125,62 @@
         </thead>
         <tbody>
           {#each orders as order}
+            {@const status = statusMap[order.status] || statusMap["pending"]}
             <tr
-              class="hover:bg-muted/50 border-b last:border-0 transition-colors"
+              class="hover:bg-gray-50/50 border-b last:border-0 transition-colors"
             >
-              <td class="p-4 align-middle">
-                {new Date(order.created_at).toLocaleDateString("id-ID", {
-                  day: "numeric",
-                  month: "short",
-                })}
+              <td class="p-4 align-middle text-gray-500">
+                <div class="font-medium text-gray-900">
+                  {new Date(order.created_at).toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </div>
+                <div class="text-[10px]">
+                  {new Date(order.created_at).toLocaleTimeString("id-ID", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </div>
               </td>
               <td class="p-4 align-middle">
-                {order.items
-                  ?.map((i) => `${i.quantity}x ${i.name}`)
-                  .join(", ") || "Order items"}
+                <div class="font-medium text-gray-900">
+                  <div class="text-xs text-gray-500 line-clamp-1">
+                    {formatItems(order.items)}
+                  </div>
+                </div>
               </td>
-              <td class="p-4 align-middle font-medium">
+              <td class="p-4 align-middle font-bold text-gray-900">
                 Rp {order.total_price?.toLocaleString("id-ID") || 0}
               </td>
               <td class="p-4 align-middle">
-                <span
-                  class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold
-                  {order.status === 'completed'
-                    ? 'border-transparent bg-green-100 text-green-800'
-                    : order.status === 'cancelled'
-                      ? 'border-transparent bg-red-100 text-red-800'
-                      : 'border-transparent bg-blue-100 text-blue-800'}"
-                >
-                  {order.status || "Pending"}
-                </span>
+                <div class="flex items-center gap-2">
+                  <span
+                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider {status.color}"
+                  >
+                    <svelte:component this={status.icon} size={10} />
+                    {status.label}
+                  </span>
+
+                  {#if order.status === "sent_to_wa"}
+                    <div class="flex gap-1 ml-auto">
+                      <button
+                        on:click={() => updateStatus(order.id, "completed")}
+                        class="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                        title="Selesaikan"
+                      >
+                        <CheckCircle2 size={16} />
+                      </button>
+                      <button
+                        on:click={() => updateStatus(order.id, "cancelled")}
+                        class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Batalkan"
+                      >
+                        <XCircle size={16} />
+                      </button>
+                    </div>
+                  {/if}
+                </div>
               </td>
             </tr>
           {/each}

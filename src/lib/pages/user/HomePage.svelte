@@ -14,9 +14,18 @@
   let allMenuData: any[] = [];
   let allStores: any[] = [];
   let villages: any[] = [];
-  let selectedVillageId = "";
+  let selectedVillageId =
+    typeof localStorage !== "undefined"
+      ? localStorage.getItem("orb_selected_village") || ""
+      : "";
   let loading = true;
+  let loadingMore = false;
   let showVillageModal = false;
+
+  // Pagination
+  let menuPage = 0;
+  const menuPageSize = 12; // Smaller initial batch
+  let hasMoreMenus = true;
 
   onMount(async () => {
     loading = true;
@@ -28,18 +37,7 @@
       .order("name");
     villages = vData || [];
 
-    // Fetch All Menu Items with Shops
-    const { data: menuData } = await supabase
-      .from("menu_items")
-      .select("*, shops(*)")
-      .eq("is_available", true);
-
-    allMenuData = (menuData || []).map((m) => ({
-      ...m,
-      shop: m.shops,
-    }));
-
-    // Fetch All Stores
+    // Fetch All Stores with villages
     const { data: storeData } = await supabase
       .from("shops")
       .select("*, villages(name)")
@@ -47,18 +45,106 @@
       .eq("is_verified", true);
 
     allStores = storeData || [];
+
+    // Initial Menu Fetch
+    await fetchNextPage(true);
     loading = false;
   });
 
-  // Filter Logic
+  async function fetchNextPage(reset = false) {
+    if ((!hasMoreMenus && !reset) || loadingMore) return;
+
+    if (reset) {
+      menuPage = 0;
+      allMenuData = [];
+      hasMoreMenus = true;
+    }
+
+    loadingMore = true;
+    const from = menuPage * menuPageSize;
+    const to = from + menuPageSize - 1;
+
+    let query = supabase
+      .from("menu_items")
+      .select("*, shops(*)")
+      .eq("is_available", true)
+      .range(from, to);
+
+    if (selectedVillageId) {
+      // Filter by village if specified
+      const shopIds = allStores
+        .filter((s) => s.village_id === selectedVillageId)
+        .map((s) => s.id);
+
+      if (shopIds.length > 0) {
+        query = query.in("shop_id", shopIds);
+      } else {
+        allMenuData = [];
+        hasMoreMenus = false;
+        loadingMore = false;
+        return;
+      }
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Error fetching menus:", error);
+    } else {
+      const newMenus = (data || []).map((m: any) => ({
+        ...m,
+        shop: m.shops,
+      }));
+
+      allMenuData = [...allMenuData, ...newMenus];
+      hasMoreMenus = data?.length === menuPageSize;
+      menuPage++;
+    }
+    loadingMore = false;
+  }
+
+  // Seeded shuffle for rotation
+  function seededShuffle(array: any[], seed: number) {
+    let m = array.length,
+      t,
+      i;
+    let currSeed = seed;
+    const shuffled = [...array];
+    while (m) {
+      const x = Math.sin(currSeed++) * 10000;
+      const r = x - Math.floor(x);
+      i = Math.floor(r * m--);
+      t = shuffled[m];
+      shuffled[m] = shuffled[i];
+      shuffled[i] = t;
+    }
+    return shuffled;
+  }
+
+  function getDayOfYear() {
+    const today = new Date();
+    return Math.floor(
+      (today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) /
+        86400000,
+    );
+  }
+
+  function updateVillageFilter(id: string) {
+    selectedVillageId = id;
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("orb_selected_village", id);
+    }
+    showVillageModal = false;
+    villageSearchQuery = "";
+    fetchNextPage(true); // Reset menus for new village
+  }
+
   $: filteredMenus = allMenuData.filter((m) => {
     const matchSearch =
       searchQuery.trim() === "" ||
       m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       m.shop?.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchVillage =
-      selectedVillageId === "" || m.shop?.village_id === selectedVillageId;
-    return matchSearch && matchVillage;
+    return matchSearch;
   });
 
   $: filteredStores = allStores.filter((s) => {
@@ -70,8 +156,27 @@
     return matchSearch && matchVillage;
   });
 
-  $: recommendedItems = filteredMenus.slice(0, 10);
-  $: otherMenus = filteredMenus.slice(10, 20);
+  $: recommendedShops = (() => {
+    if (selectedVillageId === "") {
+      // Global Recommendation: Sort by interactions (wa_taps + maps_taps)
+      return [...allStores]
+        .sort(
+          (a, b) =>
+            (b.wa_taps || 0) +
+            (b.maps_taps || 0) -
+            ((a.wa_taps || 0) + (a.maps_taps || 0)),
+        )
+        .slice(0, 8);
+    } else {
+      // Village Recommendation: Rotated daily
+      const villageShops = allStores.filter(
+        (s) => s.village_id === selectedVillageId,
+      );
+      return seededShuffle(villageShops, getDayOfYear()).slice(0, 8);
+    }
+  })();
+
+  $: otherMenus = filteredMenus;
 
   $: filteredVillages = villages.filter((v) =>
     v.name.toLowerCase().includes(villageSearchQuery.toLowerCase()),
@@ -84,6 +189,19 @@
   let lastScrollTop = 0;
   function handleScroll(e: any) {
     const currentScrollTop = e.target.scrollTop;
+    const scrollHeight = e.target.scrollHeight;
+    const clientHeight = e.target.clientHeight;
+
+    // Load more when 200px from bottom
+    if (
+      scrollHeight - currentScrollTop - clientHeight < 200 &&
+      hasMoreMenus &&
+      !loadingMore &&
+      searchQuery.trim() === ""
+    ) {
+      fetchNextPage();
+    }
+
     if (currentScrollTop > lastScrollTop && currentScrollTop > 100) {
       // Scrolling down
       window.dispatchEvent(new CustomEvent("hide-nav"));
@@ -123,7 +241,6 @@
               class="text-white text-base font-black leading-none uppercase tracking-tight"
               >OrbFood</span
             >
-            <span class="text-white/60 text-[10px] font-bold">Pesan Antar</span>
           </div>
         </div>
 
@@ -165,36 +282,11 @@
           <div class="h-24 bg-gray-100 rounded-2xl animate-pulse"></div>
         </div>
       </div>
-    {:else if searchQuery.trim() === "" && selectedVillageId === ""}
-      <!-- Recommendations Grid -->
+    {:else if searchQuery.trim() !== ""}
+      <!-- Search Results View -->
       <section class="mb-8">
         <h2 class="text-lg font-black text-gray-900 mb-4 px-1">
-          Rekomendasi Menu
-        </h2>
-        <div class="grid grid-cols-2 gap-4">
-          {#each recommendedItems as item}
-            <PortraitMenuCard
-              {item}
-              onNavigate={() => onStoreSelect(item.shop)}
-            />
-          {/each}
-        </div>
-      </section>
-
-      <!-- Other Menus -->
-      <section>
-        <h2 class="text-lg font-black text-gray-900 mb-4 px-1">Menu Lainnya</h2>
-        <div class="flex flex-col gap-4">
-          {#each otherMenus as item}
-            <MenuCard {item} onNavigate={() => onStoreSelect(item.shop)} />
-          {/each}
-        </div>
-      </section>
-    {:else}
-      <!-- Search Results Grid -->
-      <section class="mb-8">
-        <h2 class="text-lg font-black text-gray-900 mb-4 px-1">
-          Hasil Pencarian Toko
+          Toko Ditemukan
         </h2>
         <div class="flex flex-col gap-4">
           {#each filteredStores as store}
@@ -209,7 +301,9 @@
       </section>
 
       <section>
-        <h2 class="text-lg font-black text-gray-900 mb-4 px-1">Hasil Menu</h2>
+        <h2 class="text-lg font-black text-gray-900 mb-4 px-1">
+          Menu Ditemukan
+        </h2>
         <div class="flex flex-col gap-4">
           {#each filteredMenus as item}
             <MenuCard {item} onNavigate={() => onStoreSelect(item.shop)} />
@@ -218,6 +312,49 @@
         {#if filteredMenus.length === 0}
           <div class="py-12 text-center text-gray-400 font-bold">
             Menu tidak ditemukan
+          </div>
+        {/if}
+      </section>
+    {:else}
+      <!-- Default View (Recommendations & Others) -->
+      <section class="mb-8">
+        <h2 class="text-lg font-black text-gray-900 mb-4 px-1">
+          Rekomendasi Toko
+        </h2>
+        <div class="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+          {#each recommendedShops as store}
+            <PortraitMenuCard
+              item={store}
+              onNavigate={() => onStoreSelect(store)}
+            />
+          {/each}
+        </div>
+        {#if recommendedShops.length === 0}
+          <div class="py-10 text-center text-gray-400 font-bold">
+            Belum ada rekomendasi di desa ini
+          </div>
+        {/if}
+      </section>
+
+      <section>
+        <h2 class="text-lg font-black text-gray-900 mb-4 px-1">Menu Lainnya</h2>
+        <div class="flex flex-col gap-4">
+          {#each otherMenus as item}
+            <MenuCard {item} onNavigate={() => onStoreSelect(item.shop)} />
+          {/each}
+        </div>
+
+        {#if loadingMore}
+          <div class="py-6 flex justify-center">
+            <div
+              class="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"
+            ></div>
+          </div>
+        {:else if !hasMoreMenus && otherMenus.length > 0}
+          <div
+            class="py-8 text-center text-gray-400 text-xs font-medium italic"
+          >
+            Sudah menampilkan semua menu ✨
           </div>
         {/if}
       </section>
@@ -259,11 +396,7 @@
 
         <div class="space-y-2 max-h-[50vh] overflow-y-auto no-scrollbar pb-10">
           <button
-            on:click={() => {
-              selectedVillageId = "";
-              showVillageModal = false;
-              villageSearchQuery = "";
-            }}
+            on:click={() => updateVillageFilter("")}
             class="w-full flex items-center justify-between p-4 rounded-2xl {selectedVillageId ===
             ''
               ? 'bg-primary/5 text-primary'
@@ -277,11 +410,7 @@
 
           {#each filteredVillages as village}
             <button
-              on:click={() => {
-                selectedVillageId = village.id;
-                showVillageModal = false;
-                villageSearchQuery = "";
-              }}
+              on:click={() => updateVillageFilter(village.id)}
               class="w-full flex items-center justify-between p-4 rounded-2xl {selectedVillageId ===
               village.id
                 ? 'bg-primary/5 text-primary'

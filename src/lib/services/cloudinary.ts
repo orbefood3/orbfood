@@ -1,32 +1,36 @@
+import { supabase } from "./supabase";
+
 export const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 export const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
 /**
- * Uploads an image file to Cloudinary using an unsigned upload preset.
+ * Uploads an image file to Cloudinary via a secure Supabase Edge Function.
  * @param file The image file to upload.
+ * @param folder The folder to store the image in.
  * @returns The secure URL of the uploaded image.
  */
-export async function uploadImage(file: File): Promise<string> {
-    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-        throw new Error("Cloudinary configuration is missing. Please check VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET in .env");
-    }
+export async function uploadImage(file: File, folder: string = 'general'): Promise<string> {
+    const { data: { session } } = await supabase.auth.getSession();
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    formData.append("folder", folder);
 
     try {
         const response = await fetch(
-            `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cloudinary-upload`,
             {
                 method: "POST",
+                headers: {
+                    'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                },
                 body: formData,
             }
         );
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error?.message || "Upload failed");
+            throw new Error(errorData.error || "Upload failed");
         }
 
         const data = await response.json();
@@ -36,6 +40,7 @@ export async function uploadImage(file: File): Promise<string> {
         throw error;
     }
 }
+
 
 /**
  * Generates an optimized image URL (WebP/AVIF, auto quality).

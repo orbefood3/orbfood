@@ -42,10 +42,13 @@
                     <slot name="header-title">{title}</slot>
                 </h3>
                 <span class="status-badge">
-                    <slot name="header-subtitle"
-                        >Role: {profile?.role || "Admin"}</slot
-                    >
+                    <slot name="header-subtitle">
+                        Role: {profile?.role || "Admin"}
+                    </slot>
                 </span>
+            </div>
+            <div class="header-actions-container ml-auto">
+                <slot name="header-actions" />
             </div>
         </div>
 
@@ -119,7 +122,7 @@
     }
 
     .sidebar-header {
-        padding: 0 24px 24px;
+        padding: 0 16px 24px;
         display: flex;
         align-items: center;
         gap: 12px;
@@ -135,6 +138,7 @@
         align-items: center;
         justify-content: center;
         overflow: hidden;
+        flex-shrink: 0;
     }
 
     .default-avatar {
@@ -153,7 +157,7 @@
 
     .info h3 {
         margin: 0;
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 600;
         color: white;
         white-space: nowrap;
@@ -162,13 +166,19 @@
     }
 
     .status-badge {
-        font-size: 11px;
+        font-size: 10px;
         background: var(--accent);
         padding: 2px 8px;
         border-radius: 10px;
         color: white;
         margin-top: 4px;
         display: inline-block;
+        white-space: nowrap;
+    }
+
+    .header-actions-container {
+        display: flex;
+        align-items: center;
     }
 
     .nav-links {

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { supabase } from "../../services/supabase";
+  import { toasts } from "../../stores/toastStore";
   import AdminOrders from "./AdminOrders.svelte";
   import LoadingSpinner from "../../components/ui/LoadingSpinner.svelte";
   import PageWrapper from "../../components/ui/PageWrapper.svelte";
@@ -22,6 +23,9 @@
   let itemsPerPage = 10;
   let totalItems = 0;
   let searchTimeout: any;
+  let hasMore = true;
+  let observer: IntersectionObserver;
+  let loadMoreRef: HTMLElement;
 
   // Detail Modal State
   let showDetailModal = false;
@@ -29,8 +33,11 @@
 
   onMount(fetchShops);
 
-  async function fetchShops() {
-    loading = true;
+  async function fetchShops(append = false) {
+    if (!append) {
+      loading = true;
+      currentPage = 1;
+    }
 
     // Calculate range
     const from = (currentPage - 1) * itemsPerPage;
@@ -38,29 +45,13 @@
 
     let query = supabase
       .from("shops")
-      .select("*, user_profiles(display_name)", { count: "exact" })
+      .select("*, user_profiles!inner(display_name)", { count: "exact" })
       .eq("is_verified", true)
       .order("created_at", { ascending: false })
       .range(from, to);
 
     if (searchQuery) {
-      query = query.or(
-        `name.ilike.%${searchQuery}%, user_profiles.display_name.ilike.%${searchQuery}%`,
-      );
-      // Note: filtering on joined tables (user_profiles) with OR syntax in Supabase can be tricky.
-      // If the above doesn't work effectively for joined columns without an embedding,
-      // we might restrict search to shop name mostly, or use specific join syntax.
-      // Simpler approach for now: Search Shop Name.
-      // Retrying logic: 'name.ilike.%query%'
-      // To search relative column: !inner hint might be needed if using foreign key filtering
-      // simple: .ilike('name', `%${searchQuery}%`)
-      query = supabase
-        .from("shops")
-        .select("*, user_profiles!inner(display_name)", { count: "exact" })
-        .eq("is_verified", true)
-        .or(`name.ilike.%${searchQuery}%`) // Searching shop name mainly
-        .order("created_at", { ascending: false })
-        .range(from, to);
+      query = query.ilike("name", `%${searchQuery}%`);
     }
 
     const { data, count, error } = await query;
@@ -68,16 +59,37 @@
     if (error) {
       console.error("Error fetching shops:", error);
     } else {
-      shops = data || [];
+      const newShops = data || [];
+      shops = append ? [...shops, ...newShops] : newShops;
       totalItems = count || 0;
+      hasMore = shops.length < totalItems;
     }
     loading = false;
   }
 
+  function initObserver() {
+    observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          currentPage++;
+          fetchShops(true);
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    if (loadMoreRef) observer.observe(loadMoreRef);
+  }
+
+  onMount(() => {
+    fetchShops();
+    initObserver();
+    return () => observer?.disconnect();
+  });
+
   function handleSearchInput() {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-      currentPage = 1;
       fetchShops();
     }, 500); // Debounce 500ms
   }
@@ -95,8 +107,11 @@
       .eq("id", shop.id);
 
     if (error) {
-      alert("Error updating status: " + error.message);
+      toasts.error("Gagal mengupdate status: " + error.message);
     } else {
+      toasts.success(
+        `Toko berhasil di-${newStatus ? "aktifkan" : "nonaktifkan"}`,
+      );
       // Optimistic update
       shops = shops.map((s) =>
         s.id === shop.id ? { ...s, is_active: newStatus } : s,
@@ -116,8 +131,9 @@
     const { error } = await supabase.from("shops").delete().eq("id", shop.id);
 
     if (error) {
-      alert("Gagal menghapus toko: " + error.message);
+      toasts.error("Gagal menghapus toko: " + error.message);
     } else {
+      toasts.success("Toko berhasil dihapus");
       fetchShops();
     }
   }
@@ -263,35 +279,12 @@
       </table>
     </div>
 
-    <!-- Pagination -->
-    {#if totalPages > 1}
-      <div class="flex items-center justify-between mt-6 px-2">
-        <p class="text-sm text-gray-500">
-          {(currentPage - 1) * itemsPerPage + 1}-{Math.min(
-            currentPage * itemsPerPage,
-            totalItems,
-          )} dari {totalItems}
-        </p>
-
-        <div class="flex items-center gap-2">
-          <button
-            on:click={() => changePage(-1)}
-            disabled={currentPage === 1}
-            class="flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
-          >
-            <ChevronLeft size={16} /> Prev
-          </button>
-          <span class="text-sm font-medium text-gray-700 px-2">
-            {currentPage} / {totalPages}
-          </span>
-          <button
-            on:click={() => changePage(1)}
-            disabled={currentPage === totalPages}
-            class="flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
-          >
-            Next <ChevronRight size={16} />
-          </button>
-        </div>
+    <!-- Infinite Scroll Trigger -->
+    {#if hasMore}
+      <div bind:this={loadMoreRef} class="flex justify-center p-8">
+        {#if loading && shops.length > 0}
+          <LoadingSpinner size="sm" />
+        {/if}
       </div>
     {/if}
   {/if}

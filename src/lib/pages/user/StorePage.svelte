@@ -45,6 +45,13 @@
 
     menuItems = data || [];
     loading = false;
+
+    // Track shop view
+    try {
+      await supabase.rpc("increment_shop_views", { shop_uuid: store.id });
+    } catch (e) {
+      console.error("Failed to track shop view:", e);
+    }
   });
 
   const daysLabels: Record<string, string> = {
@@ -60,6 +67,18 @@
   function getOperatingHours(hours: any) {
     if (!hours || !hours.start_day) return "Jam tidak diatur";
     return `Buka: ${daysLabels[hours.start_day]} - ${daysLabels[hours.end_day]}, ${hours.open_time} - ${hours.close_time}`;
+  }
+
+  async function trackInteraction(type: "whatsapp" | "google_maps") {
+    if (!store?.id) return;
+    try {
+      await supabase.rpc("increment_shop_interaction", {
+        shop_id: store.id,
+        interaction_type: type,
+      });
+    } catch (e) {
+      console.error("Failed to track interaction:", e);
+    }
   }
 
   // Scroll visibility logic
@@ -80,7 +99,44 @@
     isNavVisible = true;
     window.dispatchEvent(new CustomEvent("show-nav"));
   }
+
+  async function handleShare() {
+    const shareData = {
+      title: `${store.name} - OrbFood`,
+      text: `Lihat toko ${store.name} di OrbFood! ${fullStoreData?.description || ""}`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        const { toasts } = await import("../../stores/toastStore");
+        toasts.success("Link toko berhasil disalin ke clipboard!");
+      }
+    } catch (err) {
+      console.error("Error sharing:", err);
+    }
+  }
 </script>
+
+<svelte:head>
+  <title>{store.name} - OrbFood</title>
+  <meta
+    name="description"
+    content={fullStoreData?.description ||
+      `Pesan makanan dan minuman terbaik dari ${store.name} di OrbFood.`}
+  />
+  <meta property="og:title" content={`${store.name} - OrbFood`} />
+  <meta
+    property="og:description"
+    content={fullStoreData?.description || `Cek menu lezat di ${store.name}!`}
+  />
+  {#if fullStoreData?.banner_url}
+    <meta property="og:image" content={fullStoreData.banner_url} />
+  {/if}
+</svelte:head>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -102,7 +158,7 @@
           >{store.name}</span
         >
       </div>
-      <button class="p-2 hover:bg-gray-100 rounded-full">
+      <button on:click={handleShare} class="p-2 hover:bg-gray-100 rounded-full">
         <Share2 class="w-5 h-5 text-gray-400" />
       </button>
     </div>
@@ -217,6 +273,7 @@
                   <a
                     href={fullStoreData.google_maps_url}
                     target="_blank"
+                    on:click={() => trackInteraction("google_maps")}
                     class="flex items-center gap-1.5 text-xs font-bold text-gray-600 hover:text-blue-600 transition-all"
                   >
                     <MapPin class="w-4 h-4 text-blue-500" /> Lokasi
@@ -279,6 +336,7 @@
             <a
               href="https://wa.me/62{fullStoreData.whatsapp.replace(/^0/, '')}"
               target="_blank"
+              on:click={() => trackInteraction("whatsapp")}
               class="fixed bottom-32 right-6 z-40 bg-green-500 text-white p-4 rounded-3xl shadow-2xl hover:bg-green-600 transition-all active:scale-95 flex items-center gap-2 font-black text-sm {isNavVisible
                 ? 'translate-y-0'
                 : 'translate-y-24'} duration-300"

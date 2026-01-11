@@ -31,6 +31,9 @@
     let itemsPerPage = 8; // Slightly reduced for better grid fit if moved to grid later, but fine for table
     let totalItems = 0;
     let searchTimeout: any;
+    let hasMore = true;
+    let observer: IntersectionObserver;
+    let loadMoreRef: HTMLElement;
 
     // Modal State
     let showModal = false;
@@ -56,8 +59,12 @@
         if (shopId) fetchMenus();
     });
 
-    async function fetchMenus() {
-        loading = true;
+    async function fetchMenus(append = false) {
+        if (!append) {
+            loading = true;
+            currentPage = 1;
+        }
+
         const from = (currentPage - 1) * itemsPerPage;
         const to = from + itemsPerPage - 1;
 
@@ -77,23 +84,39 @@
         if (error) {
             console.error("Error fetching menus:", error);
         } else {
-            menus = data || [];
+            const newMenus = data || [];
+            menus = append ? [...menus, ...newMenus] : newMenus;
             totalItems = count || 0;
+            hasMore = menus.length < totalItems;
         }
         loading = false;
     }
 
+    function initObserver() {
+        observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !loading) {
+                    currentPage++;
+                    fetchMenus(true);
+                }
+            },
+            { threshold: 0.1 },
+        );
+
+        if (loadMoreRef) observer.observe(loadMoreRef);
+    }
+
+    onMount(() => {
+        if (shopId) fetchMenus();
+        initObserver();
+        return () => observer?.disconnect();
+    });
+
     function handleSearchInput() {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => {
-            currentPage = 1;
             fetchMenus();
         }, 500);
-    }
-
-    function changePage(step: number) {
-        currentPage += step;
-        fetchMenus();
     }
 
     function openAddModal() {
@@ -399,35 +422,12 @@
                 </div>
             </div>
 
-            <!-- Pagination -->
-            {#if totalPages > 1}
-                <div class="flex items-center justify-between mt-6 px-2">
-                    <p class="text-sm text-gray-500">
-                        {(currentPage - 1) * itemsPerPage + 1}-{Math.min(
-                            currentPage * itemsPerPage,
-                            totalItems,
-                        )} dari {totalItems}
-                    </p>
-
-                    <div class="flex items-center gap-2">
-                        <button
-                            on:click={() => changePage(-1)}
-                            disabled={currentPage === 1}
-                            class="flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
-                        >
-                            <ChevronLeft size={16} /> Prev
-                        </button>
-                        <span class="text-sm font-medium text-gray-700 px-2">
-                            {currentPage} / {totalPages}
-                        </span>
-                        <button
-                            on:click={() => changePage(1)}
-                            disabled={currentPage === totalPages}
-                            class="flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
-                        >
-                            Next <ChevronRight size={16} />
-                        </button>
-                    </div>
+            <!-- Infinite Scroll Trigger -->
+            {#if hasMore}
+                <div bind:this={loadMoreRef} class="flex justify-center p-8">
+                    {#if loading && menus.length > 0}
+                        <LoadingSpinner size="sm" />
+                    {/if}
                 </div>
             {/if}
         {/if}

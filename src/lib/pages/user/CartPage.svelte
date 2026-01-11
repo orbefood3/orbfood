@@ -1,35 +1,93 @@
 <script lang="ts">
-  import { cart, cartTotal, updateQuantity, removeFromCart, clearCart } from '../../stores/cartStore';
-  import { supabase } from '../../services/supabase';
-  
+  import {
+    cart,
+    cartTotal,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+  } from "../../stores/cartStore";
+  import { supabase } from "../../services/supabase";
+
   export let user: any = null;
   export let onBack: () => void;
 
-  let customerName = user?.user_metadata?.full_name || '';
-  let notes = '';
+  let customerName = user?.user_metadata?.full_name || "";
+  let notes = "";
   let showLoginPrompt = false;
+  let isSubmitting = false;
+
+  // Track if we've already fetched shop info to avoid redundant calls
+  let shopInfo: any = null;
 
   $: if (user && !customerName) {
     customerName = user.user_metadata.full_name;
   }
 
   function handleCheckout() {
-    if (!user) {
-      showLoginPrompt = true;
-      return;
-    }
-    proceedToWhatsApp();
-  }
-
-  function proceedToWhatsApp() {
     if (!customerName) {
       alert("Silakan masukkan nama Anda");
       return;
     }
 
-    const itemsText = $cart.map(item => `- ${item.name} (${item.quantity || 1}) - Rp ${(item.price * (item.quantity || 1)).toLocaleString()}`).join('\n');
-    
-    const message = `Halo! Saya ${customerName}.
+    if (!user) {
+      showLoginPrompt = true;
+      return;
+    }
+    submitOrder();
+  }
+
+  async function submitOrder() {
+    if ($cart.length === 0) return;
+    isSubmitting = true;
+
+    try {
+      // 1. Get the shop_id from the first item (assuming all items are from the same shop)
+      const shopId = $cart[0].shop_id;
+
+      // 2. Fetch the latest shop info (especially the WhatsApp number)
+      const { data: shop, error: shopError } = await supabase
+        .from("shops")
+        .select("name, whatsapp")
+        .eq("id", shopId)
+        .single();
+
+      if (shopError || !shop) {
+        throw new Error("Gagal mengambil informasi toko");
+      }
+
+      // 3. Save order to database for history
+      const { data: order, error: orderError } = await supabase
+        .from("order_history")
+        .insert({
+          user_id: user?.id || null, // Allow anonymous orders
+          shop_id: shopId,
+          items: $cart.map((item) => ({
+            menu_id: item.id,
+            name: item.name,
+            price: item.price,
+            qty: item.quantity || 1,
+            image: item.primary_image || item.image,
+          })),
+          total_price: $cartTotal,
+          customer_name: customerName,
+          customer_phone: "", // We don't have this yet, but we have their WA later
+          notes: notes,
+          status: "sent_to_wa",
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // 4. Proceed to WhatsApp
+      const itemsText = $cart
+        .map(
+          (item) =>
+            `- ${item.name} (${item.quantity || 1}) - Rp ${(item.price * (item.quantity || 1)).toLocaleString()}`,
+        )
+        .join("\n");
+
+      const message = `Halo ${shop.name}! Saya ${customerName}.
 
 Saya mau pesan:
 ${itemsText}
@@ -37,20 +95,35 @@ ${itemsText}
 Total: Rp ${$cartTotal.toLocaleString()}
 
 Catatan:
-${notes || '-'}
+${notes || "-"}
 
+Order ID: ${order.id.split("-")[0].toUpperCase()}
 Lokasi saya akan saya kirimkan setelah ini.`;
 
-    const encodedMessage = encodeURIComponent(message);
-    // Using a placeholder phone number, in a real app this would come from the shop's data
-    const shopWhatsApp = "628123456789"; 
-    window.open(`https://wa.me/${shopWhatsApp}?text=${encodedMessage}`, '_blank');
+      const encodedMessage = encodeURIComponent(message);
+      const cleanWhatsApp = shop.whatsapp
+        .replace(/^0/, "62")
+        .replace(/\D/g, "");
+
+      window.open(
+        `https://wa.me/${cleanWhatsApp}?text=${encodedMessage}`,
+        "_blank",
+      );
+
+      // Clear cart after success
+      clearCart();
+      onBack();
+    } catch (error: any) {
+      alert("Terjadi kesalahan: " + error.message);
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   async function loginWithGoogle() {
     await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin }
+      provider: "google",
+      options: { redirectTo: window.location.origin },
     });
   }
 </script>
@@ -74,7 +147,7 @@ Lokasi saya akan saya kirimkan setelah ini.`;
           <h3>📦 Pesanan Anda</h3>
           <button class="clear-btn" on:click={clearCart}>Hapus Semua</button>
         </div>
-        
+
         {#each $cart as item}
           <div class="cart-item shadow-soft rounded-lg">
             <div class="item-info">
@@ -82,9 +155,18 @@ Lokasi saya akan saya kirimkan setelah ini.`;
               <span class="item-price">Rp {item.price.toLocaleString()}</span>
             </div>
             <div class="qty-controls">
-              <button class="qty-btn" on:click={() => item.quantity > 1 ? updateQuantity(item.id, -1) : removeFromCart(item.id)}>−</button>
+              <button
+                class="qty-btn"
+                on:click={() =>
+                  item.quantity > 1
+                    ? updateQuantity(item.id, -1)
+                    : removeFromCart(item.id)}>−</button
+              >
               <span class="qty">{item.quantity || 1}</span>
-              <button class="qty-btn" on:click={() => updateQuantity(item.id, 1)}>+</button>
+              <button
+                class="qty-btn"
+                on:click={() => updateQuantity(item.id, 1)}>+</button
+              >
             </div>
           </div>
         {/each}
@@ -93,11 +175,20 @@ Lokasi saya akan saya kirimkan setelah ini.`;
       <section class="checkout-form">
         <div class="input-group">
           <label for="name">Nama Pembeli</label>
-          <input type="text" id="name" bind:value={customerName} placeholder="Masukkan nama Anda..." />
+          <input
+            type="text"
+            id="name"
+            bind:value={customerName}
+            placeholder="Masukkan nama Anda..."
+          />
         </div>
         <div class="input-group">
           <label for="notes">Catatan Pesanan</label>
-          <textarea id="notes" bind:value={notes} placeholder="Contoh: Pedas sedang, tanpa sayur..."></textarea>
+          <textarea
+            id="notes"
+            bind:value={notes}
+            placeholder="Contoh: Pedas sedang, tanpa sayur..."
+          ></textarea>
         </div>
       </section>
 
@@ -116,8 +207,12 @@ Lokasi saya akan saya kirimkan setelah ini.`;
 
   {#if $cart.length > 0}
     <footer class="footer sticky-bottom shadow-soft">
-      <button class="checkout-btn bg-accent" on:click={handleCheckout}>
-        PESAN VIA WHATSAPP
+      <button
+        class="checkout-btn bg-accent disabled:opacity-50"
+        on:click={handleCheckout}
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? "MEMPROSES..." : "PESAN VIA WHATSAPP"}
       </button>
     </footer>
   {/if}
@@ -126,10 +221,17 @@ Lokasi saya akan saya kirimkan setelah ini.`;
     <div class="modal-overlay">
       <div class="modal rounded-lg shadow-soft">
         <h3>🔐 Simpan pesanan kamu?</h3>
-        <p>Masuk agar pesanan masuk riwayat dan kamu bisa memberi ulasan nantinya.</p>
+        <p>
+          Masuk agar pesanan masuk riwayat dan kamu bisa memberi ulasan
+          nantinya.
+        </p>
         <div class="modal-actions">
-          <button class="login-btn google-btn" on:click={loginWithGoogle}>Login dengan Google</button>
-          <button class="skip-btn" on:click={proceedToWhatsApp}>Lanjut Tanpa Login</button>
+          <button class="login-btn google-btn" on:click={loginWithGoogle}
+            >Login dengan Google</button
+          >
+          <button class="skip-btn" on:click={submitOrder}
+            >Lanjut Tanpa Login</button
+          >
         </div>
       </div>
     </div>
@@ -244,7 +346,7 @@ Lokasi saya akan saya kirimkan setelah ini.`;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   }
 
   .qty {
@@ -271,7 +373,8 @@ Lokasi saya akan saya kirimkan setelah ini.`;
     font-weight: 600;
   }
 
-  .input-group input, .input-group textarea {
+  .input-group input,
+  .input-group textarea {
     padding: 12px;
     border-radius: 8px;
     border: 1px solid #ddd;
@@ -327,7 +430,7 @@ Lokasi saya akan saya kirimkan setelah ini.`;
   .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;

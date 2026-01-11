@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { supabase } from "../../services/supabase";
+    import { toasts } from "../../stores/toastStore";
     import LoadingSpinner from "../../components/ui/LoadingSpinner.svelte";
     import PageWrapper from "../../components/ui/PageWrapper.svelte";
     import EmptyState from "../../components/ui/EmptyState.svelte";
@@ -23,6 +24,9 @@
     let itemsPerPage = 10;
     let totalItems = 0;
     let searchTimeout: any;
+    let hasMore = true;
+    let observer: IntersectionObserver;
+    let loadMoreRef: HTMLElement;
 
     let editingUser: any = null;
     let selectedRole = "";
@@ -41,10 +45,11 @@
         },
     ];
 
-    onMount(fetchUsers);
-
-    async function fetchUsers() {
-        loading = true;
+    async function fetchUsers(append = false) {
+        if (!append) {
+            loading = true;
+            currentPage = 1;
+        }
 
         const from = (currentPage - 1) * itemsPerPage;
         const to = from + itemsPerPage - 1;
@@ -56,12 +61,7 @@
             .range(from, to);
 
         if (searchQuery) {
-            query = supabase
-                .from("user_profiles")
-                .select("*", { count: "exact" })
-                .ilike("display_name", `%${searchQuery}%`)
-                .order("created_at", { ascending: false })
-                .range(from, to);
+            query = query.ilike("display_name", `%${searchQuery}%`);
         }
 
         const { data, count, error } = await query;
@@ -69,16 +69,37 @@
         if (error) {
             console.error("Error fetching users:", error);
         } else {
-            users = data || [];
+            const newUsers = data || [];
+            users = append ? [...users, ...newUsers] : newUsers;
             totalItems = count || 0;
+            hasMore = users.length < totalItems;
         }
         loading = false;
     }
 
+    function initObserver() {
+        observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !loading) {
+                    currentPage++;
+                    fetchUsers(true);
+                }
+            },
+            { threshold: 0.1 },
+        );
+
+        if (loadMoreRef) observer.observe(loadMoreRef);
+    }
+
+    onMount(() => {
+        fetchUsers();
+        initObserver();
+        return () => observer?.disconnect();
+    });
+
     function handleSearchInput() {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => {
-            currentPage = 1;
             fetchUsers();
         }, 500);
     }
@@ -107,8 +128,9 @@
             .eq("id", editingUser.id);
 
         if (error) {
-            alert("Gagal mengupdate role: " + error.message);
+            toasts.error("Gagal mengupdate role: " + error.message);
         } else {
+            toasts.success("Role berhasil diperbarui");
             // Optimistic update
             users = users.map((u) =>
                 u.id === editingUser.id ? { ...u, role: selectedRole } : u,
@@ -132,8 +154,9 @@
             .eq("id", user.id);
 
         if (error) {
-            alert("Gagal menghapus profil: " + error.message);
+            toasts.error("Gagal menghapus profil: " + error.message);
         } else {
+            toasts.success("Profil berhasil dihapus");
             fetchUsers();
         }
     }
@@ -331,35 +354,12 @@
                 </div>
             </div>
 
-            <!-- Pagination -->
-            {#if totalPages > 1}
-                <div class="flex items-center justify-between mt-6 px-2">
-                    <p class="text-sm text-gray-500">
-                        {(currentPage - 1) * itemsPerPage + 1}-{Math.min(
-                            currentPage * itemsPerPage,
-                            totalItems,
-                        )} dari {totalItems}
-                    </p>
-
-                    <div class="flex items-center gap-2">
-                        <button
-                            on:click={() => changePage(-1)}
-                            disabled={currentPage === 1}
-                            class="flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
-                        >
-                            <ChevronLeft size={16} /> Prev
-                        </button>
-                        <span class="text-sm font-medium text-gray-700 px-2">
-                            {currentPage} / {totalPages}
-                        </span>
-                        <button
-                            on:click={() => changePage(1)}
-                            disabled={currentPage === totalPages}
-                            class="flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
-                        >
-                            Next <ChevronRight size={16} />
-                        </button>
-                    </div>
+            <!-- Infinite Scroll Trigger -->
+            {#if hasMore}
+                <div bind:this={loadMoreRef} class="flex justify-center p-8">
+                    {#if loading && users.length > 0}
+                        <LoadingSpinner size="sm" />
+                    {/if}
                 </div>
             {/if}
         {/if}
