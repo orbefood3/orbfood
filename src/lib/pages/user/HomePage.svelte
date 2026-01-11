@@ -108,7 +108,16 @@
       query = query.ilike("name", `%${currentQ}%`);
     }
 
-    // Server-side Village Filter Optimization
+    // Global Filter: Only show menus from active and verified shops
+    const activeShopIds = allStores.map((s) => s.id);
+
+    if (activeShopIds.length === 0) {
+      allMenuData = [];
+      hasMoreMenus = false;
+      loadingMore = false;
+      return;
+    }
+
     if (selectedVillageId) {
       const villageShopIds = allStores
         .filter((s) => s.village_id === selectedVillageId)
@@ -117,12 +126,15 @@
       if (villageShopIds.length > 0) {
         query = query.in("shop_id", villageShopIds);
       } else {
-        // If no shops in village, don't bother fetching
+        // If no active shops in village, don't show any menus
         allMenuData = [];
         hasMoreMenus = false;
         loadingMore = false;
         return;
       }
+    } else {
+      // No village selected: show menus from ALL active shops
+      query = query.in("shop_id", activeShopIds);
     }
 
     // Sort: Featured first if keyword matches, otherwise new

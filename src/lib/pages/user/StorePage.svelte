@@ -31,9 +31,17 @@
 
     const { data: storeData } = await supabase
       .from("shops")
-      .select("*, villages(name)") // Keep * for shop details as most fields are used in UI (hours, social, location, banner, etc)
+      .select("*, villages(name)")
       .eq("id", store.id)
+      .eq("is_active", true)
+      .eq("is_verified", true)
       .single();
+
+    if (!storeData) {
+      fullStoreData = null;
+      loading = false;
+      return;
+    }
 
     fullStoreData = storeData;
 
@@ -345,6 +353,28 @@
               <span>Chat</span>
             </a>
           {/if}
+        {:else}
+          <!-- Shop Not Found / Inactive -->
+          <div class="py-24 text-center px-6">
+            <div
+              class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl"
+            >
+              🚫
+            </div>
+            <h2 class="text-xl font-black text-gray-900 mb-2">
+              Toko Tidak Ditemukan
+            </h2>
+            <p class="text-gray-500 text-sm mb-8">
+              Toko ini mungkin sudah tidak aktif atau dalam proses verifikasi
+              admin. Silakan cari toko lain yang tersedia.
+            </p>
+            <button
+              on:click={onBack}
+              class="px-8 py-3 bg-primary text-white rounded-2xl font-black text-sm shadow-lg shadow-primary/20 transition-all active:scale-95"
+            >
+              Kembali ke Beranda
+            </button>
+          </div>
         {/if}
       </div>
     </div>
