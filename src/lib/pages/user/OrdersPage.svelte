@@ -73,9 +73,23 @@
       options: { redirectTo: window.location.origin },
     });
   }
+
+  function handleTouch() {
+    window.dispatchEvent(new CustomEvent("show-nav"));
+  }
+
+  onMount(() => {
+    fetchOrders(true);
+    window.addEventListener("touchstart", handleTouch, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", handleTouch);
+    };
+  });
 </script>
 
-<div class="orders-page">
+<!-- svelte-ignore a11y-click-events-have-key-events -->
+<!-- svelte-ignore a11y-no-static-element-interactions -->
+<div class="orders-page" on:touchstart|stopPropagation={handleTouch}>
   <header class="header bg-primary sticky-top shadow-soft">
     <h1>Riwayat Pesanan</h1>
   </header>

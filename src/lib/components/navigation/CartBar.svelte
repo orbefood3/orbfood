@@ -6,7 +6,7 @@
 
 {#if $cartCount > 0}
   <div
-    class="cart-bar sticky-bottom shadow-soft transition-transform duration-300 {isVisible
+    class="cart-bar fixed bottom-0 left-0 right-0 z-50 shadow-soft transition-transform duration-300 {isVisible
       ? 'translate-y-0'
       : 'translate-y-24'}"
   >

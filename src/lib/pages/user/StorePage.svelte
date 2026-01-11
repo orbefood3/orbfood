@@ -93,7 +93,15 @@
   let lastScrollTop = 0;
   function handleScroll(e: any) {
     const currentScrollTop = e.target.scrollTop;
-    if (currentScrollTop > lastScrollTop && currentScrollTop > 100) {
+    const scrollHeight = e.target.scrollHeight;
+    const clientHeight = e.target.clientHeight;
+
+    // Hide on scroll down, show on scroll up
+    // Don't hide if near bottom (200px)
+    if (scrollHeight - currentScrollTop - clientHeight < 200) {
+      isNavVisible = true;
+      window.dispatchEvent(new CustomEvent("show-nav"));
+    } else if (currentScrollTop > lastScrollTop && currentScrollTop > 100) {
       isNavVisible = false;
       window.dispatchEvent(new CustomEvent("hide-nav"));
     } else {

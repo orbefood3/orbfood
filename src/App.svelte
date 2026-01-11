@@ -30,6 +30,10 @@
 
   let isNavVisible = true;
 
+  $: if (activeTab) {
+    isNavVisible = true;
+  }
+
   onMount(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       user = session?.user ?? null;

@@ -284,7 +284,11 @@
       fetchNextPage();
     }
 
-    if (currentScrollTop > lastScrollTop && currentScrollTop > 100) {
+    // Hide on scroll down, show on scroll up
+    // Don't hide if near bottom (200px)
+    if (scrollHeight - currentScrollTop - clientHeight < 200) {
+      window.dispatchEvent(new CustomEvent("show-nav"));
+    } else if (currentScrollTop > lastScrollTop && currentScrollTop > 100) {
       window.dispatchEvent(new CustomEvent("hide-nav"));
     } else {
       window.dispatchEvent(new CustomEvent("show-nav"));
@@ -295,11 +299,19 @@
   function handleTouch() {
     window.dispatchEvent(new CustomEvent("show-nav"));
   }
+
+  onMount(() => {
+    // Add global touch listener as fallback
+    window.addEventListener("touchstart", handleTouch, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", handleTouch);
+    };
+  });
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="home-page" on:touchstart={handleTouch}>
+<div class="home-page" on:touchstart|stopPropagation={handleTouch}>
   <header
     class="header-sticky sticky top-0 z-40 bg-primary px-4 pt-4 pb-4 shadow-sm"
   >

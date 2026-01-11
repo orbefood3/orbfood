@@ -102,9 +102,25 @@
 
   $: featuredArticle = filteredArticles[0];
   $: normalArticles = filteredArticles.slice(1);
+
+  function handleTouch() {
+    window.dispatchEvent(new CustomEvent("show-nav"));
+  }
+
+  onMount(() => {
+    window.addEventListener("touchstart", handleTouch, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", handleTouch);
+    };
+  });
 </script>
 
-<div class="blog-container bg-gray-50 pb-24">
+<!-- svelte-ignore a11y-click-events-have-key-events -->
+<!-- svelte-ignore a11y-no-static-element-interactions -->
+<div
+  class="blog-container bg-gray-50 pb-24"
+  on:touchstart|stopPropagation={handleTouch}
+>
   <!-- Header Section -->
   <header class="bg-white border-b border-gray-100 sticky top-0 z-30 px-4 py-4">
     <div class="max-w-2xl mx-auto space-y-4">

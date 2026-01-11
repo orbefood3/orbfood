@@ -128,7 +128,7 @@
                     silakan hubungi kami di:
                 </p>
                 <p class="contact">
-                    <strong>Email:</strong> orbefood3@gmail.com<br />
+                    <strong>Email:</strong> vibonacicepak@gmail.com.<br />
                 </p>
             </section>
         </div>

@@ -5,7 +5,7 @@
 </script>
 
 <nav
-  class="bottom-nav sticky-bottom shadow-soft transition-transform duration-300 {isVisible
+  class="bottom-nav fixed bottom-0 left-0 right-0 z-50 shadow-soft transition-transform duration-300 {isVisible
     ? 'translate-y-0'
     : 'translate-y-full'}"
 >
