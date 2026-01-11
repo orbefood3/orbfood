@@ -60,13 +60,26 @@
       shopsCache.set(allStores);
     }
 
-    // Initial Menu Fetch (menus are not cached as they change more frequently)
+    // Initial Menu Fetch
     await fetchNextPage(true);
     loading = false;
   });
 
-  async function fetchNextPage(reset = false) {
-    if ((!hasMoreMenus && !reset) || loadingMore) return;
+  // Debounce search
+  let searchTimeout: any;
+  $: {
+    if (searchQuery !== undefined) {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        fetchNextPage(true, true); // Reset and search mode
+      }, 500);
+    }
+  }
+
+  async function fetchNextPage(reset = false, isSearch = false) {
+    if ((!hasMoreMenus && !reset) || (loadingMore && !isSearch)) return;
+
+    const currentQ = searchQuery.trim();
 
     if (reset) {
       menuPage = 0;
@@ -80,19 +93,27 @@
 
     let query = supabase
       .from("menu_items")
-      .select("*, shops(*)")
-      .eq("is_available", true)
-      .range(from, to);
+      .select(
+        "id, name, price, description, image_url, original_price, is_available, shops!inner(id, name, village_id, is_active, is_verified)",
+      )
+      .eq("is_available", true);
+
+    if (currentQ) {
+      // Search by menu name OR shop name
+      query = query.or(
+        `name.ilike.%${currentQ}%,shops.name.ilike.%${currentQ}%`,
+      );
+    }
 
     if (selectedVillageId) {
-      // Filter by village if specified
       const shopIds = allStores
         .filter((s) => s.village_id === selectedVillageId)
         .map((s) => s.id);
 
       if (shopIds.length > 0) {
         query = query.in("shop_id", shopIds);
-      } else {
+      } else if (!currentQ) {
+        // If filtering by village and no shops found, return empty
         allMenuData = [];
         hasMoreMenus = false;
         loadingMore = false;
@@ -100,24 +121,58 @@
       }
     }
 
+    query = query.range(from, to);
+
     const { data, error } = await query;
 
     if (error) {
       console.error("Error fetching menus:", error);
     } else {
+      loadingMore = false;
       const newMenus = (data || []).map((m: any) => ({
         ...m,
         shop: m.shops,
       }));
 
-      allMenuData = [...allMenuData, ...newMenus];
-      hasMoreMenus = data?.length === menuPageSize;
-      menuPage++;
+      if (reset) {
+        allMenuData = newMenus;
+      } else {
+        // Filter out duplicates if needed, but for now append
+        const existingIds = new Set(allMenuData.map((m) => m.id));
+        const uniqueNewMenus = newMenus.filter((m) => !existingIds.has(m.id));
+        allMenuData = [...allMenuData, ...uniqueNewMenus];
+      }
+
+      hasMoreMenus = (data || []).length === menuPageSize;
+      if (hasMoreMenus) menuPage++;
     }
     loadingMore = false;
   }
 
-  // Seeded shuffle for rotation
+  function updateVillageFilter(id: string) {
+    selectedVillageId = id;
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("orb_selected_village", id);
+    }
+    showVillageModal = false;
+    villageSearchQuery = "";
+    fetchNextPage(true); // Reset menus for new village
+  }
+
+  // Reactive Declarations
+  $: filteredMenus = allMenuData; // Now handled by server query
+
+  $: filteredStores = allStores.filter((s) => {
+    // Client-side search for stores is fine as list is usually small
+    const matchSearch =
+      searchQuery.trim() === "" ||
+      s.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchVillage =
+      selectedVillageId === "" || s.village_id === selectedVillageId;
+    return matchSearch && matchVillage;
+  });
+
+  // Helper Functions
   function seededShuffle(array: any[], seed: number) {
     let m = array.length,
       t,
@@ -143,36 +198,9 @@
     );
   }
 
-  function updateVillageFilter(id: string) {
-    selectedVillageId = id;
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem("orb_selected_village", id);
-    }
-    showVillageModal = false;
-    villageSearchQuery = "";
-    fetchNextPage(true); // Reset menus for new village
-  }
-
-  $: filteredMenus = allMenuData.filter((m) => {
-    const matchSearch =
-      searchQuery.trim() === "" ||
-      m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.shop?.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchSearch;
-  });
-
-  $: filteredStores = allStores.filter((s) => {
-    const matchSearch =
-      searchQuery.trim() === "" ||
-      s.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchVillage =
-      selectedVillageId === "" || s.village_id === selectedVillageId;
-    return matchSearch && matchVillage;
-  });
-
   $: recommendedShops = (() => {
     if (selectedVillageId === "") {
-      // Global Recommendation: Sort by interactions (wa_taps + maps_taps)
+      // Global Recommendation
       return [...allStores]
         .sort(
           (a, b) =>
@@ -182,7 +210,7 @@
         )
         .slice(0, 8);
     } else {
-      // Village Recommendation: Rotated daily
+      // Village Recommendation
       const villageShops = allStores.filter(
         (s) => s.village_id === selectedVillageId,
       );
@@ -199,7 +227,7 @@
   $: selectedVillageName =
     villages.find((v) => v.id === selectedVillageId)?.name || "Semua Desa";
 
-  // Navigation Visiblity dispatching via custom events for App.svelte or global state
+  // Navigation Visibility
   let lastScrollTop = 0;
   function handleScroll(e: any) {
     const currentScrollTop = e.target.scrollTop;
@@ -217,10 +245,8 @@
     }
 
     if (currentScrollTop > lastScrollTop && currentScrollTop > 100) {
-      // Scrolling down
       window.dispatchEvent(new CustomEvent("hide-nav"));
     } else {
-      // Scrolling up
       window.dispatchEvent(new CustomEvent("show-nav"));
     }
     lastScrollTop = currentScrollTop;

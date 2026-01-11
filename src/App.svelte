@@ -147,12 +147,18 @@
 
   function handleBack() {
     selectedStore = null;
+    selectedArticle = null;
     window.location.hash = "#/";
   }
 
   function handleArticleSelect(article: any) {
     selectedArticle = article;
-    window.location.hash = `#/blog/${article.slug}`;
+    window.location.hash = `#/blog/${article.slug || article.id}`;
+  }
+
+  function handleArticleBack() {
+    selectedArticle = null;
+    window.location.hash = "#/blog";
   }
 
   function handleBlogBack() {
@@ -221,15 +227,9 @@
       onBack={handleBack}
       onViewCart={handleViewCart}
     />
-  {:else if activeTab === "home"}
-    <HomePage onStoreSelect={handleStoreSelect} />
   {:else if activeTab === "blog"}
     {#if selectedArticle}
-      <BlogDetailPage
-        article={selectedArticle}
-        onBack={handleBlogBack}
-        onArticleSelect={handleArticleSelect}
-      />
+      <BlogDetailPage article={selectedArticle} onBack={handleArticleBack} />
     {:else}
       <BlogPage onArticleSelect={handleArticleSelect} />
     {/if}

@@ -10,25 +10,53 @@
   let loading = true;
   let agreed = false;
 
-  onMount(fetchOrders);
+  // Pagination
+  let page = 0;
+  const pageSize = 5;
+  let hasMore = true;
+  let loadingMore = false;
 
-  async function fetchOrders() {
+  onMount(() => fetchOrders(true));
+
+  async function fetchOrders(reset = false) {
     if (!user) return;
-    loading = true;
+    if ((!hasMore && !reset) || loadingMore) return;
 
-    // Fetch orders joined with shop names
+    if (reset) {
+      page = 0;
+      orders = [];
+      hasMore = true;
+      loading = true;
+    } else {
+      loadingMore = true;
+    }
+
+    const from = page * pageSize;
+    const to = from + pageSize - 1;
+
+    // Fetch orders joined with shop names, optimized select
     const { data, error } = await supabase
       .from("order_history")
-      .select("*, shops(name)")
+      .select("id, user_id, status, total_price, created_at, shops(name)")
       .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
     if (error) {
       console.error("Error fetching orders:", error);
     } else {
-      orders = data || [];
+      const newOrders = data || [];
+      if (reset) {
+        orders = newOrders;
+      } else {
+        orders = [...orders, ...newOrders];
+      }
+
+      hasMore = newOrders.length === pageSize;
+      if (hasMore) page++;
     }
     loading = false;
+    loadingMore = false;
   }
 
   const statusMap: Record<string, { label: string; color: string }> = {
@@ -135,6 +163,22 @@
           {/each}
         {/if}
       </div>
+
+      {#if hasMore}
+        <div class="flex justify-center mt-4 pb-4">
+          <button
+            class="text-xs font-bold text-primary bg-primary/5 px-4 py-2 rounded-full hover:bg-primary/10 transition-colors"
+            on:click={() => fetchOrders()}
+            disabled={loadingMore}
+          >
+            {#if loadingMore}
+              Memuat...
+            {:else}
+              Lihat Lebih Banyak
+            {/if}
+          </button>
+        </div>
+      {/if}
     {/if}
   </main>
 </div>

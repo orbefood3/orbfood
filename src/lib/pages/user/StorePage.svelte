@@ -31,7 +31,7 @@
 
     const { data: storeData } = await supabase
       .from("shops")
-      .select("*, villages(name)")
+      .select("*, villages(name)") // Keep * for shop details as most fields are used in UI (hours, social, location, banner, etc)
       .eq("id", store.id)
       .single();
 
@@ -39,7 +39,9 @@
 
     const { data } = await supabase
       .from("menu_items")
-      .select("*")
+      .select(
+        "id, name, price, description, image_url, original_price, is_available, shop_id, category",
+      )
       .eq("shop_id", store.id)
       .eq("is_available", true);
 

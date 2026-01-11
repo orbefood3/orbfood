@@ -21,18 +21,52 @@
     { value: "berita", label: "Berita", icon: "📰" },
   ];
 
-  onMount(fetchArticles);
+  // Pagination
+  let page = 0;
+  const pageSize = 6;
+  let hasMore = true;
+  let loadingMore = false;
 
-  async function fetchArticles() {
-    loading = true;
+  onMount(() => fetchArticles(true));
+
+  async function fetchArticles(reset = false) {
+    if ((!hasMore && !reset) || loadingMore) return;
+
+    if (reset) {
+      page = 0;
+      articles = [];
+      hasMore = true;
+      loading = true;
+    } else {
+      loadingMore = true;
+    }
+
+    const from = page * pageSize;
+    const to = from + pageSize - 1;
+
+    // Optimized select: Exclude 'content' to save bandwidth
     const { data } = await supabase
       .from("blog_posts")
-      .select("*, author:user_profiles(display_name)")
+      .select(
+        "id, title, excerpt, category, cover_image, created_at, status, slug, author:user_profiles(display_name)",
+      )
       .eq("status", "published")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
-    articles = data || [];
+    const newArticles = data || [];
+
+    if (reset) {
+      articles = newArticles;
+    } else {
+      articles = [...articles, ...newArticles];
+    }
+
+    hasMore = newArticles.length === pageSize;
+    if (hasMore) page++;
+
     loading = false;
+    loadingMore = false;
   }
 
   $: filteredArticles = articles.filter((a) => {
@@ -222,6 +256,24 @@
           </button>
         {/each}
       </div>
+      {#if hasMore && searchQuery === "" && selectedCategory === "all"}
+        <div class="flex justify-center mt-8">
+          <button
+            class="bg-white border border-gray-200 text-gray-600 font-bold py-3 px-6 rounded-2xl shadow-sm hover:bg-gray-50 active:scale-95 transition-all text-sm flex items-center gap-2"
+            on:click={() => fetchArticles()}
+            disabled={loadingMore}
+          >
+            {#if loadingMore}
+              <div
+                class="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"
+              ></div>
+              Memuat...
+            {:else}
+              Muat Lebih Banyak
+            {/if}
+          </button>
+        </div>
+      {/if}
     {/if}
   </main>
 </div>

@@ -10,27 +10,27 @@ export const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_P
  * @returns The secure URL of the uploaded image.
  */
 export async function uploadImage(file: File, folder: string = 'general'): Promise<string> {
-    const { data: { session } } = await supabase.auth.getSession();
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+        throw new Error("Cloudinary configuration missing");
+    }
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
     formData.append("folder", folder);
 
     try {
         const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cloudinary-upload`,
+            `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
             {
                 method: "POST",
-                headers: {
-                    'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-                },
                 body: formData,
             }
         );
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error || "Upload failed");
+            throw new Error(errorData.error?.message || "Upload failed");
         }
 
         const data = await response.json();
