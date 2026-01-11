@@ -233,6 +233,8 @@
     {:else}
       <BlogPage onArticleSelect={handleArticleSelect} />
     {/if}
+  {:else if activeTab === "home"}
+    <HomePage onStoreSelect={handleStoreSelect} />
   {:else if activeTab === "pesanan"}
     <OrdersPage {user} />
   {:else if activeTab === "akun"}

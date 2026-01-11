@@ -331,10 +331,13 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
                             <div class="space-y-2">
-                                <label class="text-sm font-bold text-gray-700"
+                                <label
+                                    for="shop_name"
+                                    class="text-sm font-bold text-gray-700"
                                     >Nama Toko</label
                                 >
                                 <input
+                                    id="shop_name"
                                     type="text"
                                     bind:value={name}
                                     class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all"
@@ -342,10 +345,13 @@
                                 />
                             </div>
                             <div class="space-y-2">
-                                <label class="text-sm font-bold text-gray-700"
+                                <label
+                                    for="shop_category"
+                                    class="text-sm font-bold text-gray-700"
                                     >Kategori</label
                                 >
                                 <select
+                                    id="shop_category"
                                     bind:value={category}
                                     class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all"
                                 >
@@ -356,10 +362,13 @@
                                 </select>
                             </div>
                             <div class="space-y-2 md:col-span-2">
-                                <label class="text-sm font-bold text-gray-700"
+                                <label
+                                    for="shop_description"
+                                    class="text-sm font-bold text-gray-700"
                                     >Deskripsi Toko</label
                                 >
                                 <textarea
+                                    id="shop_description"
                                     bind:value={description}
                                     rows="3"
                                     class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all"
@@ -385,7 +394,9 @@
                     <div class="p-6 space-y-6">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div class="space-y-2">
-                                <label class="text-sm font-bold text-gray-700"
+                                <label
+                                    for="shop_whatsapp"
+                                    class="text-sm font-bold text-gray-700"
                                     >Nomor WhatsApp</label
                                 >
                                 <div class="relative">
@@ -393,6 +404,7 @@
                                         class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
                                     />
                                     <input
+                                        id="shop_whatsapp"
                                         type="tel"
                                         bind:value={whatsapp}
                                         class="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all"
@@ -401,7 +413,9 @@
                                 </div>
                             </div>
                             <div class="space-y-2">
-                                <label class="text-sm font-bold text-gray-700"
+                                <label
+                                    for="shop_instagram"
+                                    class="text-sm font-bold text-gray-700"
                                     >Instagram Username (Tanpa @)</label
                                 >
                                 <div class="relative">
@@ -409,6 +423,7 @@
                                         class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
                                     />
                                     <input
+                                        id="shop_instagram"
                                         type="text"
                                         bind:value={instagram_url}
                                         class="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all"
@@ -417,7 +432,9 @@
                                 </div>
                             </div>
                             <div class="space-y-2">
-                                <label class="text-sm font-bold text-gray-700"
+                                <label
+                                    for="shop_tiktok"
+                                    class="text-sm font-bold text-gray-700"
                                     >TikTok Username (Tanpa @)</label
                                 >
                                 <div class="relative">
@@ -426,6 +443,7 @@
                                         >T</span
                                     >
                                     <input
+                                        id="shop_tiktok"
                                         type="text"
                                         bind:value={tiktok_url}
                                         class="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all"
@@ -434,7 +452,9 @@
                                 </div>
                             </div>
                             <div class="space-y-2">
-                                <label class="text-sm font-bold text-gray-700"
+                                <label
+                                    for="shop_gmaps"
+                                    class="text-sm font-bold text-gray-700"
                                     >Link Google Maps</label
                                 >
                                 <div class="relative">
@@ -442,6 +462,7 @@
                                         class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
                                     />
                                     <input
+                                        id="shop_gmaps"
                                         type="url"
                                         bind:value={google_maps_url}
                                         class="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all"
@@ -470,10 +491,13 @@
                     </div>
                     <div class="p-6 space-y-6">
                         <div class="space-y-2">
-                            <label class="text-sm font-bold text-gray-700"
+                            <label
+                                for="shop_village"
+                                class="text-sm font-bold text-gray-700"
                                 >Pilih Desa</label
                             >
                             <select
+                                id="shop_village"
                                 bind:value={village_id}
                                 class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all text-sm"
                             >
@@ -491,10 +515,13 @@
                         </div>
 
                         <div class="space-y-2">
-                            <label class="text-sm font-bold text-gray-700"
+                            <label
+                                for="shop_address"
+                                class="text-sm font-bold text-gray-700"
                                 >Alamat Lengkap</label
                             >
                             <textarea
+                                id="shop_address"
                                 bind:value={address}
                                 rows="2"
                                 class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-gray-900 focus:border-transparent outline-none transition-all text-sm"
@@ -587,10 +614,12 @@
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="space-y-2">
                                     <label
+                                        for="hours_start_day"
                                         class="text-xs font-bold text-gray-500 uppercase"
                                         >Dari Hari</label
                                     >
                                     <select
+                                        id="hours_start_day"
                                         bind:value={start_day}
                                         class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none transition-all"
                                     >
@@ -603,10 +632,12 @@
                                 </div>
                                 <div class="space-y-2">
                                     <label
+                                        for="hours_end_day"
                                         class="text-xs font-bold text-gray-500 uppercase"
                                         >Sampai Hari</label
                                     >
                                     <select
+                                        id="hours_end_day"
                                         bind:value={end_day}
                                         class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none transition-all"
                                     >
@@ -622,10 +653,12 @@
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="space-y-2">
                                     <label
+                                        for="hours_open_time"
                                         class="text-xs font-bold text-gray-500 uppercase"
                                         >Buka Pukul</label
                                     >
                                     <input
+                                        id="hours_open_time"
                                         type="time"
                                         bind:value={open_time}
                                         class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none transition-all"
@@ -633,10 +666,12 @@
                                 </div>
                                 <div class="space-y-2">
                                     <label
+                                        for="hours_close_time"
                                         class="text-xs font-bold text-gray-500 uppercase"
                                         >Tutup Pukul</label
                                     >
                                     <input
+                                        id="hours_close_time"
                                         type="time"
                                         bind:value={close_time}
                                         class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none transition-all"

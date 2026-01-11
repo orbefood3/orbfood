@@ -229,7 +229,11 @@
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
             class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"
+            role="button"
+            tabindex="0"
             on:click={() => !modalLoading && (showModal = false)}
+            on:keydown={(e) =>
+                e.key === "Escape" && !modalLoading && (showModal = false)}
         ></div>
 
         <div
@@ -251,15 +255,16 @@
 
             <div class="p-6 space-y-4">
                 <div class="space-y-2">
-                    <label class="text-sm font-bold text-gray-700"
-                        >Nama Desa</label
+                    <label
+                        for="village_name_input"
+                        class="text-sm font-bold text-gray-700">Nama Desa</label
                     >
                     <input
+                        id="village_name_input"
                         type="text"
                         bind:value={villageName}
                         placeholder="Contoh: Sukamaju"
                         class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                        autofocus
                     />
                 </div>
 

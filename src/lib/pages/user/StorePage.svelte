@@ -39,9 +39,7 @@
 
     const { data } = await supabase
       .from("menu_items")
-      .select(
-        "id, name, price, description, image_url, original_price, is_available, shop_id, category",
-      )
+      .select("*")
       .eq("shop_id", store.id)
       .eq("is_available", true);
 

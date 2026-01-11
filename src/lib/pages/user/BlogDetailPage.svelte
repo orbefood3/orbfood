@@ -94,7 +94,7 @@
         </h1>
 
         <!-- Author -->
-        {#if article.author?.display_name}
+        {#if article.user_profiles?.display_name || article.author?.display_name}
             <div
                 class="flex items-center gap-3 mb-8 border-b border-gray-100 pb-6"
             >
@@ -105,7 +105,8 @@
                 </div>
                 <div>
                     <p class="text-sm font-bold text-gray-900">
-                        {article.author.display_name}
+                        {article.user_profiles?.display_name ||
+                            article.author?.display_name}
                     </p>
                     <p class="text-xs text-gray-500">Penulis</p>
                 </div>

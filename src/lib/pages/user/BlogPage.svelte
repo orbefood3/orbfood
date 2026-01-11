@@ -47,14 +47,35 @@
     // Optimized select: Exclude 'content' to save bandwidth
     const { data } = await supabase
       .from("blog_posts")
-      .select(
-        "id, title, excerpt, category, cover_image, created_at, status, slug, author:user_profiles(display_name)",
-      )
+      .select("*")
       .eq("status", "published")
       .order("created_at", { ascending: false })
       .range(from, to);
 
-    const newArticles = data || [];
+    let newArticles = data || [];
+
+    // Manually fetch authors if needed
+    if (newArticles.length > 0) {
+      const authorIds = [
+        ...new Set(newArticles.map((a) => a.author_id).filter(Boolean)),
+      ];
+      if (authorIds.length > 0) {
+        const { data: authors } = await supabase
+          .from("user_profiles")
+          .select("id, display_name")
+          .in("id", authorIds);
+
+        const authorMap = (authors || []).reduce((acc: any, author: any) => {
+          acc[author.id] = author;
+          return acc;
+        }, {});
+
+        newArticles = newArticles.map((article) => ({
+          ...article,
+          user_profiles: authorMap[article.author_id] || null,
+        }));
+      }
+    }
 
     if (reset) {
       articles = newArticles;
@@ -240,10 +261,10 @@
                     day: "numeric",
                   })}
                 </span>
-                {#if article.author?.display_name}
+                {#if article.user_profiles?.display_name}
                   <span class="flex items-center gap-1">
                     <User size={10} />
-                    {article.author.display_name}
+                    {article.user_profiles.display_name}
                   </span>
                 {/if}
               </div>

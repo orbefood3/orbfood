@@ -30,39 +30,47 @@
 
   onMount(async () => {
     loading = true;
+    try {
+      // Try to get villages from cache first
+      const cachedVillages = villagesCache.get();
+      if (cachedVillages) {
+        villages = cachedVillages;
+      } else {
+        // Fetch Villages from Supabase
+        const { data: vData } = await supabase
+          .from("villages")
+          .select("*")
+          .order("name");
+        villages = vData || [];
+        villagesCache.set(villages);
+      }
 
-    // Try to get villages from cache first
-    const cachedVillages = villagesCache.get();
-    if (cachedVillages) {
-      villages = cachedVillages;
-    } else {
-      // Fetch Villages from Supabase
-      const { data: vData } = await supabase
-        .from("villages")
-        .select("*")
-        .order("name");
-      villages = vData || [];
-      villagesCache.set(villages);
+      // Try to get shops from cache first
+      const cachedShops = shopsCache.get();
+      if (cachedShops) {
+        allStores = cachedShops;
+      } else {
+        // Fetch All Stores with villages from Supabase
+        const { data: storeData } = await supabase
+          .from("shops")
+          .select("*")
+          .eq("is_active", true)
+          .eq("is_verified", true);
+
+        // Manual fetch villages for shops if needed, or just skip if name not strictly required for IDs
+        // Simplification: remove villages(name) dependency for stability
+
+        allStores = storeData || [];
+        shopsCache.set(allStores);
+      }
+
+      // Initial Menu Fetch
+      await fetchNextPage(true);
+    } catch (e) {
+      console.error("HomePage mount error:", e);
+    } finally {
+      loading = false;
     }
-
-    // Try to get shops from cache first
-    const cachedShops = shopsCache.get();
-    if (cachedShops) {
-      allStores = cachedShops;
-    } else {
-      // Fetch All Stores with villages from Supabase
-      const { data: storeData } = await supabase
-        .from("shops")
-        .select("*, villages(name)")
-        .eq("is_active", true)
-        .eq("is_verified", true);
-      allStores = storeData || [];
-      shopsCache.set(allStores);
-    }
-
-    // Initial Menu Fetch
-    await fetchNextPage(true);
-    loading = false;
   });
 
   // Debounce search
@@ -93,27 +101,23 @@
 
     let query = supabase
       .from("menu_items")
-      .select(
-        "id, name, price, description, image_url, original_price, is_available, shops!inner(id, name, village_id, is_active, is_verified)",
-      )
+      .select("*")
       .eq("is_available", true);
 
     if (currentQ) {
-      // Search by menu name OR shop name
-      query = query.or(
-        `name.ilike.%${currentQ}%,shops.name.ilike.%${currentQ}%`,
-      );
+      query = query.ilike("name", `%${currentQ}%`);
     }
 
+    // Server-side Village Filter Optimization
     if (selectedVillageId) {
-      const shopIds = allStores
+      const villageShopIds = allStores
         .filter((s) => s.village_id === selectedVillageId)
         .map((s) => s.id);
 
-      if (shopIds.length > 0) {
-        query = query.in("shop_id", shopIds);
-      } else if (!currentQ) {
-        // If filtering by village and no shops found, return empty
+      if (villageShopIds.length > 0) {
+        query = query.in("shop_id", villageShopIds);
+      } else {
+        // If no shops in village, don't bother fetching
         allMenuData = [];
         hasMoreMenus = false;
         loadingMore = false;
@@ -121,31 +125,55 @@
       }
     }
 
-    query = query.range(from, to);
+    // Sort: Featured first if keyword matches, otherwise new
+    if (!currentQ) {
+      query = query.order("created_at", { ascending: false });
+    }
 
-    const { data, error } = await query;
+    const { data: menuData, error } = await query.range(from, to);
 
     if (error) {
-      console.error("Error fetching menus:", error);
+      console.error("Error fetching menu:", error);
     } else {
-      loadingMore = false;
-      const newMenus = (data || []).map((m: any) => ({
-        ...m,
-        shop: m.shops,
-      }));
+      let items = menuData || [];
+
+      // Manually fetch shops to avoid join issues
+      if (items.length > 0) {
+        const shopIds = [
+          ...new Set(items.map((i) => i.shop_id).filter(Boolean)),
+        ];
+        if (shopIds.length > 0) {
+          const { data: shops } = await supabase
+            .from("shops")
+            .select("*")
+            .in("id", shopIds);
+
+          const shopMap = (shops || []).reduce((acc: any, shop: any) => {
+            acc[shop.id] = shop;
+            return acc;
+          }, {});
+
+          items = items.map((item) => ({
+            ...item,
+            shops: shopMap[item.shop_id] || null,
+            shop: shopMap[item.shop_id] || null, // Handle both potential usages
+          }));
+        }
+      }
 
       if (reset) {
-        allMenuData = newMenus;
+        allMenuData = items;
       } else {
-        // Filter out duplicates if needed, but for now append
+        // Filter out duplicates if needed
         const existingIds = new Set(allMenuData.map((m) => m.id));
-        const uniqueNewMenus = newMenus.filter((m) => !existingIds.has(m.id));
+        const uniqueNewMenus = items.filter((m) => !existingIds.has(m.id));
         allMenuData = [...allMenuData, ...uniqueNewMenus];
       }
 
-      hasMoreMenus = (data || []).length === menuPageSize;
+      hasMoreMenus = (menuData || []).length === menuPageSize;
       if (hasMoreMenus) menuPage++;
     }
+
     loadingMore = false;
   }
 

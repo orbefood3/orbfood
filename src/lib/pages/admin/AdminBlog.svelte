@@ -71,12 +71,16 @@
     const postData = {
       ...currentPost,
       author_id: user.id,
+      is_published:
+        currentPost.status === "published" ||
+        currentPost.status === "announcement",
       slug: currentPost.title
         .toLowerCase()
         .replace(/ /g, "-")
         .replace(/[^\w-]+/g, ""),
       published_at:
-        currentPost.status === "published"
+        currentPost.status === "published" ||
+        currentPost.status === "announcement"
           ? new Date().toISOString()
           : currentPost.published_at || null,
       updated_at: new Date().toISOString(),
