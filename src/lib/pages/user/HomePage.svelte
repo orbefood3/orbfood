@@ -274,15 +274,7 @@
     const scrollHeight = e.target.scrollHeight;
     const clientHeight = e.target.clientHeight;
 
-    // Load more when 200px from bottom
-    if (
-      scrollHeight - currentScrollTop - clientHeight < 200 &&
-      hasMoreMenus &&
-      !loadingMore &&
-      searchQuery.trim() === ""
-    ) {
-      fetchNextPage();
-    }
+    // Navigation Visibility logic (Hide/Show Nav)
 
     // Hide on scroll down, show on scroll up
     // Don't hide if near bottom (200px)
@@ -437,16 +429,31 @@
         </div>
 
         {#if loadingMore}
-          <div class="py-6 flex justify-center">
+          <div class="py-10 flex flex-col items-center gap-3">
             <div
-              class="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"
+              class="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"
             ></div>
+            <span class="text-xs font-bold text-primary animate-pulse"
+              >Memuat Kelezatan...</span
+            >
           </div>
-        {:else if !hasMoreMenus && otherMenus.length > 0}
+        {:else if hasMoreMenus}
+          <div class="py-6 flex justify-center">
+            <button
+              on:click={() => fetchNextPage()}
+              class="group flex items-center gap-2 px-8 py-3 bg-white border-2 border-primary/10 rounded-2xl text-primary font-black text-sm hover:bg-primary hover:text-white hover:border-primary transition-all shadow-sm active:scale-95"
+            >
+              <span>Lihat Menu Lainnya</span>
+              <span class="group-hover:translate-y-1 transition-transform"
+                >👇</span
+              >
+            </button>
+          </div>
+        {:else if otherMenus.length > 0}
           <div
-            class="py-8 text-center text-gray-400 text-xs font-medium italic"
+            class="py-12 text-center text-gray-400 text-xs font-bold tracking-widest uppercase opacity-60"
           >
-            Sudah menampilkan semua menu ✨
+            ─── SUDAH MENAMPILKAN SEMUA ✨ ───
           </div>
         {/if}
       </section>

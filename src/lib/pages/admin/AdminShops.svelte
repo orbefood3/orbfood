@@ -23,9 +23,6 @@
   let itemsPerPage = 10;
   let totalItems = 0;
   let searchTimeout: any;
-  let hasMore = true;
-  let observer: IntersectionObserver;
-  let loadMoreRef: HTMLElement;
 
   // Detail Modal State
   let showDetailModal = false;
@@ -33,11 +30,8 @@
 
   onMount(fetchShops);
 
-  async function fetchShops(append = false) {
-    if (!append) {
-      loading = true;
-      currentPage = 1;
-    }
+  async function fetchShops() {
+    loading = true;
 
     // Calculate range
     const from = (currentPage - 1) * itemsPerPage;
@@ -59,37 +53,16 @@
     if (error) {
       console.error("Error fetching shops:", error);
     } else {
-      const newShops = data || [];
-      shops = append ? [...shops, ...newShops] : newShops;
+      shops = data || [];
       totalItems = count || 0;
-      hasMore = shops.length < totalItems;
     }
     loading = false;
   }
 
-  function initObserver() {
-    observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loading) {
-          currentPage++;
-          fetchShops(true);
-        }
-      },
-      { threshold: 0.1 },
-    );
-
-    if (loadMoreRef) observer.observe(loadMoreRef);
-  }
-
-  onMount(() => {
-    fetchShops();
-    initObserver();
-    return () => observer?.disconnect();
-  });
-
   function handleSearchInput() {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
+      currentPage = 1;
       fetchShops();
     }, 500); // Debounce 500ms
   }
@@ -279,14 +252,45 @@
       </table>
     </div>
 
-    <!-- Infinite Scroll Trigger -->
-    {#if hasMore}
-      <div bind:this={loadMoreRef} class="flex justify-center p-8">
-        {#if loading && shops.length > 0}
-          <LoadingSpinner size="sm" />
-        {/if}
+    <!-- Pagination Controls -->
+    <div
+      class="mt-6 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50/50 p-4 rounded-xl border border-gray-100"
+    >
+      <div class="text-sm text-gray-500">
+        Menampilkan <span class="font-semibold text-gray-900"
+          >{shops.length}</span
+        >
+        dari
+        <span class="font-semibold text-gray-900">{totalItems}</span> toko
       </div>
-    {/if}
+
+      <div class="flex items-center gap-2">
+        <button
+          on:click={() => changePage(-1)}
+          disabled={currentPage === 1 || loading}
+          class="p-2 border border-gray-200 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-1 text-sm font-medium text-gray-700"
+        >
+          <ChevronLeft size={16} />
+          Prev
+        </button>
+
+        <div class="flex items-center gap-1 px-4">
+          <span class="text-sm font-medium text-gray-900"
+            >Halaman {currentPage}</span
+          >
+          <span class="text-sm text-gray-400">dari {totalPages}</span>
+        </div>
+
+        <button
+          on:click={() => changePage(1)}
+          disabled={currentPage === totalPages || loading}
+          class="p-2 border border-gray-200 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-1 text-sm font-medium text-gray-700"
+        >
+          Next
+          <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
   {/if}
 
   <!-- Detail Modal Side Panel -->
