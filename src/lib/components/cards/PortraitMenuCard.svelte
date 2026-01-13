@@ -1,5 +1,6 @@
 <script lang="ts">
   import { getOptimizedImageUrl } from "../../services/cloudinary";
+  import { Truck } from "lucide-svelte";
   export let item: any;
   export let onNavigate: () => void;
 </script>
@@ -22,6 +23,13 @@
       alt={item.name}
       class="menu-image w-full h-full object-cover"
     />
+    {#if item.is_delivery_available}
+      <div
+        class="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm text-blue-600 animate-in zoom-in duration-300"
+      >
+        <Truck size={12} strokeWidth={3} />
+      </div>
+    {/if}
   </div>
   <div class="info p-2 flex flex-col justify-start flex-1 bg-white">
     <div>

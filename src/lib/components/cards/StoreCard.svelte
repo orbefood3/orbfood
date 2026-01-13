@@ -1,5 +1,6 @@
 <script lang="ts">
   import { getOptimizedImageUrl } from "../../services/cloudinary";
+  import { Truck } from "lucide-svelte";
   export let store: any;
   export let onSelect: (store: any) => void;
 </script>
@@ -48,12 +49,28 @@
         class="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold uppercase"
         >{store.category}</span
       >
-      {#if store.villages?.name}
-        <span class="text-[10px] text-gray-400 font-medium"
-          >📍 {store.villages.name}</span
-        >
-      {/if}
+      <div class="flex items-center gap-1.5 ml-auto">
+        {#if store.is_delivery_available}
+          <div
+            class="flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md text-[10px] font-black border border-blue-100"
+          >
+            <Truck size={10} />
+            DELIVERY
+          </div>
+        {:else}
+          <div
+            class="px-2 py-0.5 bg-gray-50 text-gray-400 rounded-md text-[10px] font-black border border-gray-100"
+          >
+            TAKEAWAY
+          </div>
+        {/if}
+      </div>
     </div>
+    {#if store.villages?.name}
+      <span class="text-[10px] text-gray-400 font-medium"
+        >📍 {store.villages.name}</span
+      >
+    {/if}
     <button class="view-menu-btn bg-primary text-white">Lihat Menu</button>
   </div>
 </div>
@@ -93,12 +110,6 @@
   .status-badge {
     font-size: 12px;
     font-weight: 500;
-  }
-
-  .store-price {
-    margin: 0 0 12px 0;
-    font-size: 14px;
-    color: var(--text-muted);
   }
 
   .view-menu-btn {

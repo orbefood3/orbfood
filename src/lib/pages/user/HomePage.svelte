@@ -5,7 +5,7 @@
   import StoreCard from "../../components/cards/StoreCard.svelte";
   import PortraitMenuCard from "../../components/cards/PortraitMenuCard.svelte";
   import MenuCard from "../../components/cards/MenuCard.svelte";
-  import { MapPin, Search, ChevronDown, Check, X } from "lucide-svelte";
+  import { MapPin, Search, ChevronDown, Check, X, Truck } from "lucide-svelte";
   import logo from "../../../assets/logo-orb.png";
 
   export let onStoreSelect: (store: any) => void;
@@ -22,6 +22,7 @@
   let loading = true;
   let loadingMore = false;
   let showVillageModal = false;
+  let filterDeliveryOnly = false;
 
   // Pagination
   let menuPage = 0;
@@ -101,8 +102,26 @@
 
     let query = supabase
       .from("menu_items")
-      .select("*")
+      .select("*", { count: "exact" })
       .eq("is_available", true);
+
+    // Filter by delivery only if active
+    if (filterDeliveryOnly) {
+      const { data: deliveryShops } = await supabase
+        .from("shops")
+        .select("id")
+        .eq("is_delivery_available", true);
+      const deliveryShopIds = (deliveryShops || []).map((s) => s.id);
+      if (deliveryShopIds.length > 0) {
+        query = query.in("shop_id", deliveryShopIds);
+      } else {
+        // No delivery shops in this context
+        allMenuData = [];
+        loadingMore = false;
+        hasMoreMenus = false;
+        return;
+      }
+    }
 
     if (currentQ) {
       query = query.ilike("name", `%${currentQ}%`);
@@ -209,7 +228,8 @@
       s.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchVillage =
       selectedVillageId === "" || s.village_id === selectedVillageId;
-    return matchSearch && matchVillage;
+    const matchDelivery = !filterDeliveryOnly || s.is_delivery_available;
+    return matchSearch && matchVillage && matchDelivery;
   });
 
   // Helper Functions
@@ -348,8 +368,22 @@
           type="text"
           bind:value={searchQuery}
           placeholder="Cari toko atau makanan..."
-          class="w-full pl-12 pr-4 py-3 rounded-2xl bg-white border-none text-gray-900 text-sm outline-none shadow-sm font-medium"
+          class="w-full pl-12 pr-12 py-3 rounded-2xl bg-white border-none text-gray-900 text-sm outline-none shadow-sm font-medium"
         />
+
+        <!-- Smart Delivery Toggle -->
+        <button
+          on:click={() => {
+            filterDeliveryOnly = !filterDeliveryOnly;
+            fetchNextPage(true);
+          }}
+          class="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-xl transition-all duration-300 {filterDeliveryOnly
+            ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+            : 'text-gray-300 hover:text-gray-400'}"
+          title={filterDeliveryOnly ? "Tampilkan semua" : "Hanya Delivery"}
+        >
+          <Truck size={20} strokeWidth={filterDeliveryOnly ? 3 : 2} />
+        </button>
       </div>
     </div>
   </header>
