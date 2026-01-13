@@ -3,7 +3,8 @@
   import { supabase } from "../../services/supabase";
   import MenuCard from "../../components/cards/MenuCard.svelte";
   import CartBar from "../../components/navigation/CartBar.svelte";
-  import { addToCart } from "../../stores/cartStore";
+  import ShopConflictModal from "../../components/ui/ShopConflictModal.svelte";
+  import { addToCart, cart, clearCart } from "../../stores/cartStore";
   import { getOptimizedImageUrl } from "../../services/cloudinary";
   import {
     MapPin,
@@ -24,6 +25,8 @@
   let loading = true;
   let fullStoreData: any = null;
   let isNavVisible = true;
+  let showConflictModal = false;
+  let pendingItem: any = null;
 
   onMount(async () => {
     if (!store?.id) return;
@@ -134,6 +137,24 @@
     } catch (err) {
       console.error("Error sharing:", err);
     }
+  }
+
+  function handleAddToCart(item: any) {
+    if ($cart.length > 0 && $cart[0].shop_id !== item.shop_id) {
+      pendingItem = item;
+      showConflictModal = true;
+    } else {
+      addToCart(item);
+    }
+  }
+
+  function confirmStoreSwitch() {
+    clearCart();
+    if (pendingItem) {
+      addToCart(pendingItem);
+      pendingItem = null;
+    }
+    showConflictModal = false;
   }
 </script>
 
@@ -335,7 +356,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               {#each menuItems as item}
-                <MenuCard {item} onAdd={() => addToCart(item)} />
+                <MenuCard {item} onAdd={() => handleAddToCart(item)} />
               {/each}
             </div>
 
@@ -392,6 +413,13 @@
   <footer class="fixed bottom-0 left-0 right-0 z-50">
     <CartBar {onViewCart} isVisible={isNavVisible} />
   </footer>
+
+  <ShopConflictModal
+    show={showConflictModal}
+    newStoreName={store.name}
+    on:cancel={() => (showConflictModal = false)}
+    on:confirm={confirmStoreSwitch}
+  />
 </div>
 
 <style>
