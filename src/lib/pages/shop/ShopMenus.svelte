@@ -549,6 +549,8 @@
 
 {#if showModal}
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <!-- svelte-ignore a11y-no-static-element-interactions -->
         <div
             class="absolute inset-0 bg-black/50 backdrop-blur-sm"
             on:click={() => (showModal = false)}
@@ -703,8 +705,8 @@
 
                 <div class="pt-4 border-t border-gray-100">
                     <div class="flex items-center justify-between mb-4">
-                        <label class="text-sm font-bold text-gray-900"
-                            >Kustomisasi Menu</label
+                        <span class="text-sm font-bold text-gray-900"
+                            >Kustomisasi Menu</span
                         >
                         <select
                             bind:value={formData.type}
@@ -731,9 +733,9 @@
                                     >
                                     <div class="grid grid-cols-1 gap-3">
                                         <div>
-                                            <label
+                                            <span
                                                 class="block text-[10px] font-black text-gray-400 uppercase mb-1"
-                                                >Nama Grup (misal: Topping)</label
+                                                >Nama Grup (misal: Topping)</span
                                             >
                                             <input
                                                 type="text"
@@ -743,7 +745,7 @@
                                             />
                                         </div>
                                         <div
-                                            class="flex items-center gap-4 py-1"
+                                            class="flex flex-wrap items-center gap-x-4 gap-y-2 py-1"
                                         >
                                             <label
                                                 class="flex items-center gap-2 cursor-pointer"
@@ -759,34 +761,40 @@
                                                 ></label
                                             >
                                             <div
-                                                class="flex items-center gap-2"
+                                                class="flex items-center gap-3"
                                             >
-                                                <span
-                                                    class="text-[10px] font-black text-gray-400"
-                                                    >Min:</span
-                                                ><input
-                                                    type="number"
-                                                    bind:value={
-                                                        group.min_selection
-                                                    }
-                                                    min="0"
-                                                    class="w-12 px-1 py-0.5 text-xs border border-gray-200 rounded"
-                                                />
-                                            </div>
-                                            <div
-                                                class="flex items-center gap-2"
-                                            >
-                                                <span
-                                                    class="text-[10px] font-black text-gray-400"
-                                                    >Max:</span
-                                                ><input
-                                                    type="number"
-                                                    bind:value={
-                                                        group.max_selection
-                                                    }
-                                                    min="1"
-                                                    class="w-12 px-1 py-0.5 text-xs border border-gray-200 rounded"
-                                                />
+                                                <div
+                                                    class="flex items-center gap-1.5"
+                                                >
+                                                    <span
+                                                        class="text-[10px] font-black text-gray-400 uppercase"
+                                                        >Min:</span
+                                                    >
+                                                    <input
+                                                        type="number"
+                                                        bind:value={
+                                                            group.min_selection
+                                                        }
+                                                        min="0"
+                                                        class="w-10 px-1 py-0.5 text-xs text-center border border-gray-200 rounded outline-none focus:border-primary"
+                                                    />
+                                                </div>
+                                                <div
+                                                    class="flex items-center gap-1.5"
+                                                >
+                                                    <span
+                                                        class="text-[10px] font-black text-gray-400 uppercase"
+                                                        >Max:</span
+                                                    >
+                                                    <input
+                                                        type="number"
+                                                        bind:value={
+                                                            group.max_selection
+                                                        }
+                                                        min="1"
+                                                        class="w-10 px-1 py-0.5 text-xs text-center border border-gray-200 rounded outline-none focus:border-primary"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -797,14 +805,16 @@
                                             <div
                                                 class="flex items-center gap-2"
                                             >
-                                                <input
-                                                    type="text"
-                                                    bind:value={item.name}
-                                                    placeholder="Item..."
-                                                    class="flex-1 px-2 py-1.5 bg-white border border-gray-100 rounded text-xs outline-none"
-                                                />
+                                                <div class="flex-1 min-w-0">
+                                                    <input
+                                                        type="text"
+                                                        bind:value={item.name}
+                                                        placeholder="Item..."
+                                                        class="w-full px-2 py-1.5 bg-white border border-gray-100 rounded text-xs outline-none focus:border-primary"
+                                                    />
+                                                </div>
                                                 <div
-                                                    class="flex items-center gap-1 bg-white border border-gray-100 rounded px-1.5"
+                                                    class="flex items-center gap-1 bg-white border border-gray-100 rounded pl-1.5 pr-1 shrink-0"
                                                 >
                                                     <span
                                                         class="text-[10px] text-gray-400 font-bold"
@@ -814,7 +824,7 @@
                                                         bind:value={
                                                             item.additional_price
                                                         }
-                                                        class="w-16 py-1.5 text-xs font-bold outline-none"
+                                                        class="w-14 py-1.5 text-xs font-bold outline-none text-right"
                                                     />
                                                 </div>
                                                 <button
@@ -823,11 +833,11 @@
                                                             gIndex,
                                                             iIndex,
                                                         )}
-                                                    class="p-1 text-gray-300 hover:text-red-500"
-                                                    ><Trash2
-                                                        size={14}
-                                                    /></button
+                                                    class="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                                                    title="Hapus"
                                                 >
+                                                    <Trash2 size={14} />
+                                                </button>
                                             </div>
                                         {/each}
                                         <button
