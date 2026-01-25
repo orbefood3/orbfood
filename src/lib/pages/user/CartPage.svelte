@@ -68,6 +68,7 @@
             price: item.price,
             qty: item.quantity || 1,
             image: item.primary_image || item.image,
+            package_items: item.package_items || [],
           })),
           total_price: $cartTotal,
           customer_name: customerName,
@@ -82,10 +83,16 @@
 
       // 4. Proceed to WhatsApp
       const itemsText = $cart
-        .map(
-          (item) =>
-            `- ${item.name} (${item.quantity || 1}) - Rp ${(item.price * (item.quantity || 1)).toLocaleString()}`,
-        )
+        .map((item) => {
+          let text = `- ${item.name} (${item.quantity || 1}) - Rp ${(item.price * (item.quantity || 1)).toLocaleString()}`;
+          if (item.package_items && item.package_items.length > 0) {
+            const subItems = item.package_items
+              .map((si: any) => `  • ${si.name}`)
+              .join("\n");
+            text += `\n  Isi Paket:\n${subItems}`;
+          }
+          return text;
+        })
         .join("\n");
 
       const message = `Halo ${shop.name}! Saya ${customerName}.
@@ -154,6 +161,18 @@ Lokasi saya akan saya kirimkan setelah ini.`;
             <div class="item-info">
               <span class="item-name">{item.name}</span>
               <span class="item-price">Rp {item.price.toLocaleString()}</span>
+              {#if item.package_items && item.package_items.length > 0}
+                <div class="package-details mt-1">
+                  <p class="text-[10px] font-black text-primary uppercase">
+                    Isi Paket:
+                  </p>
+                  <ul class="list-none space-y-0.5">
+                    {#each item.package_items as si}
+                      <li class="text-[11px] text-gray-500">• {si.name}</li>
+                    {/each}
+                  </ul>
+                </div>
+              {/if}
             </div>
             <div class="qty-controls">
               <button

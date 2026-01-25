@@ -3,6 +3,7 @@
   import { supabase } from "../../services/supabase";
   import MenuCard from "../../components/cards/MenuCard.svelte";
   import CartBar from "../../components/navigation/CartBar.svelte";
+  import MenuDetailModal from "../../components/ui/MenuDetailModal.svelte";
   import ShopConflictModal from "../../components/ui/ShopConflictModal.svelte";
   import { addToCart, cart, clearCart } from "../../stores/cartStore";
   import { getOptimizedImageUrl } from "../../services/cloudinary";
@@ -26,6 +27,8 @@
   let fullStoreData: any = null;
   let isNavVisible = true;
   let showConflictModal = false;
+  let showDetailModal = false;
+  let selectedMenu: any = null;
   let pendingItem: any = null;
 
   onMount(async () => {
@@ -146,6 +149,11 @@
     } else {
       addToCart(item);
     }
+  }
+
+  function handleOpenDetail(item: any) {
+    selectedMenu = item;
+    showDetailModal = true;
   }
 
   function confirmStoreSwitch() {
@@ -356,7 +364,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               {#each menuItems as item}
-                <MenuCard {item} onAdd={() => handleAddToCart(item)} />
+                <MenuCard {item} onAdd={() => handleOpenDetail(item)} />
               {/each}
             </div>
 
@@ -420,6 +428,15 @@
     on:cancel={() => (showConflictModal = false)}
     on:confirm={confirmStoreSwitch}
   />
+
+  {#if selectedMenu}
+    <MenuDetailModal
+      show={showDetailModal}
+      item={selectedMenu}
+      onAdd={handleAddToCart}
+      on:close={() => (showDetailModal = false)}
+    />
+  {/if}
 </div>
 
 <style>

@@ -47,17 +47,16 @@
         category: "makanan",
         primary_image: "",
         is_available: true,
+        is_package: false,
     };
+    let packageItemsSelection: any[] = []; // [{ child_menu_id: string, quantity: number, additional_price: number }]
+    let allShopMenus: any[] = [];
     let selectedFile: File | null = null;
     let previewUrl: string = "";
     // Keep track of original image url for deletion logic
     let originalImageUrl = "";
 
     const categories = ["makanan", "minuman", "camilan", "paket", "lainnya"];
-
-    onMount(() => {
-        if (shopId) fetchMenus();
-    });
 
     async function fetchMenus(append = false) {
         if (!append) {
@@ -90,6 +89,16 @@
             hasMore = menus.length < totalItems;
         }
         loading = false;
+
+        if (!append) {
+            // Also fetch all menus for package selection only on initial load or search
+            const { data: allData } = await supabase
+                .from("menu_items")
+                .select("id, name")
+                .eq("shop_id", shopId)
+                .order("name");
+            allShopMenus = allData || [];
+        }
     }
 
     function initObserver() {
@@ -132,9 +141,39 @@
             category: "makanan",
             primary_image: "",
             is_available: true,
+            is_package: false,
         };
         originalImageUrl = "";
+        packageItemsSelection = [];
         showModal = true;
+    }
+
+    async function fetchPackageItems(parentId: string) {
+        const { data, error } = await supabase
+            .from("menu_package_items")
+            .select("child_menu_id, quantity, additional_price")
+            .eq("parent_menu_id", parentId);
+
+        if (!error && data) {
+            packageItemsSelection = data || [];
+        }
+    }
+
+    function handlePackageItemToggle(menuId: string, checked: boolean) {
+        if (checked) {
+            packageItemsSelection = [
+                ...packageItemsSelection,
+                {
+                    child_menu_id: menuId,
+                    quantity: 1,
+                    additional_price: 0,
+                },
+            ];
+        } else {
+            packageItemsSelection = packageItemsSelection.filter(
+                (p) => p.child_menu_id !== menuId,
+            );
+        }
     }
 
     function openEditModal(menu: any) {
@@ -144,6 +183,10 @@
         previewUrl = "";
         formData = { ...menu };
         originalImageUrl = menu.primary_image || "";
+        packageItemsSelection = [];
+        if (menu.is_package) {
+            fetchPackageItems(menu.id);
+        }
         showModal = true;
     }
 
@@ -192,9 +235,11 @@
             category: formData.category,
             primary_image: formData.primary_image,
             is_available: formData.is_available,
+            is_package: formData.is_package,
         };
 
         let error;
+        let savedMenuId = formData.id;
 
         if (isEditing) {
             const { error: updateError } = await supabase
@@ -203,10 +248,35 @@
                 .eq("id", formData.id);
             error = updateError;
         } else {
-            const { error: insertError } = await supabase
+            const { data: insertData, error: insertError } = await supabase
                 .from("menu_items")
-                .insert(payload);
+                .insert(payload)
+                .select()
+                .single();
             error = insertError;
+            if (insertData) savedMenuId = insertData.id;
+        }
+
+        if (!error && formData.is_package && savedMenuId) {
+            // Update package items
+            // First delete existing
+            await supabase
+                .from("menu_package_items")
+                .delete()
+                .eq("parent_menu_id", savedMenuId);
+
+            // Insert new selections
+            if (packageItemsSelection.length > 0) {
+                const packageInserts = packageItemsSelection.map((item) => ({
+                    parent_menu_id: savedMenuId,
+                    child_menu_id: item.child_menu_id,
+                    quantity: item.quantity || 1,
+                    additional_price: item.additional_price || 0,
+                }));
+                await supabase
+                    .from("menu_package_items")
+                    .insert(packageInserts);
+            }
         }
 
         if (error) {
@@ -262,6 +332,11 @@
     }
 
     $: totalPages = Math.ceil(totalItems / itemsPerPage);
+
+    // Automatically set is_package true when category is 'paket'
+    $: if (formData.category === "paket") {
+        formData.is_package = true;
+    }
 </script>
 
 <PageWrapper>
@@ -619,6 +694,116 @@
                         >Tersedia untuk dipesan</label
                     >
                 </div>
+
+                <div class="flex items-center gap-2">
+                    <input
+                        type="checkbox"
+                        id="is_package"
+                        bind:checked={formData.is_package}
+                        class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
+                    />
+                    <label
+                        for="is_package"
+                        class="text-sm font-bold text-gray-900"
+                        >Menu ini adalah Paket (Bundle)</label
+                    >
+                </div>
+
+                {#if formData.is_package}
+                    <div class="pt-4 border-t border-gray-100">
+                        <span class="block text-sm font-bold text-gray-700 mb-2"
+                            >Pilih Isi Paket</span
+                        >
+                        <div
+                            class="max-h-64 overflow-y-auto space-y-4 border border-gray-200 rounded-lg p-2 bg-gray-50"
+                        >
+                            {#each allShopMenus.filter((m) => m.id !== formData.id && !m.is_package) as menu}
+                                {@const selectedIndex =
+                                    packageItemsSelection.findIndex(
+                                        (p) => p.child_menu_id === menu.id,
+                                    )}
+                                {@const isSelected = selectedIndex !== -1}
+
+                                <div
+                                    class="p-3 bg-white rounded-xl border {isSelected
+                                        ? 'border-primary ring-1 ring-primary/20'
+                                        : 'border-gray-100'} transition-all shadow-sm"
+                                >
+                                    <label
+                                        class="flex items-center gap-3 cursor-pointer mb-3"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            on:change={(e) =>
+                                                handlePackageItemToggle(
+                                                    menu.id,
+                                                    e.currentTarget.checked,
+                                                )}
+                                            class="rounded text-primary focus:ring-primary h-5 w-5"
+                                        />
+                                        <span
+                                            class="text-sm font-black text-gray-900 flex-1"
+                                            >{menu.name}</span
+                                        >
+                                    </label>
+
+                                    {#if isSelected}
+                                        <div
+                                            class="grid grid-cols-2 gap-3 pl-8 pt-2 border-t border-gray-50"
+                                        >
+                                            <div>
+                                                <label
+                                                    class="block text-[10px] font-black text-gray-400 uppercase mb-1"
+                                                    >Jumlah</label
+                                                >
+                                                <input
+                                                    type="number"
+                                                    bind:value={
+                                                        packageItemsSelection[
+                                                            selectedIndex
+                                                        ].quantity
+                                                    }
+                                                    min="1"
+                                                    class="w-full px-2 py-1.5 bg-gray-50 border border-gray-100 rounded-lg text-xs font-bold focus:ring-1 focus:ring-primary outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label
+                                                    class="block text-[10px] font-black text-gray-400 uppercase mb-1"
+                                                    >Harga Tam. (Rp)</label
+                                                >
+                                                <input
+                                                    type="number"
+                                                    bind:value={
+                                                        packageItemsSelection[
+                                                            selectedIndex
+                                                        ].additional_price
+                                                    }
+                                                    min="0"
+                                                    placeholder="0"
+                                                    class="w-full px-2 py-1.5 bg-gray-50 border border-gray-100 rounded-lg text-xs font-bold focus:ring-1 focus:ring-primary outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                    {/if}
+                                </div>
+                            {/each}
+                            {#if allShopMenus.filter((m) => m.id !== formData.id && !m.is_package).length === 0}
+                                <p
+                                    class="text-xs text-gray-400 text-center py-4"
+                                >
+                                    Belum ada menu lain untuk dimasukkan ke
+                                    paket.
+                                </p>
+                            {/if}
+                        </div>
+                        <p class="text-[10px] text-gray-400 mt-2">
+                            * Menu paket hanya bisa berisi menu satuan (bukan
+                            paket lain).
+                        </p>
+                    </div>
+                {/if}
             </div>
 
             <div
