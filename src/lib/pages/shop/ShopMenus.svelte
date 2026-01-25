@@ -663,6 +663,11 @@
                         placeholder="0"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none text-sm"
                     />
+                    <p class="text-[10px] text-gray-400 mt-1">
+                        * Set <b>0</b> jika ini adalah menu <b>Prasmanan</b>
+                        (harga hanya dari pilihan), atau isi harga dasar jika
+                        ini menu dengan <b>Topping</b>.
+                    </p>
                 </div>
 
                 <div>
