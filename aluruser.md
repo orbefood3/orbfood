@@ -22,9 +22,6 @@ Checkout (WhatsApp)
 ↓
 (Opsional) Login agar pesanan tersimpan & bisa review
 
-
----
-
 ## 2️⃣ STRUKTUR HALAMAN UTAMA (ShopeeFood-like)
 
 ### 🏠 Home
