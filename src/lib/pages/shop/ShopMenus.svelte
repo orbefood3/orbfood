@@ -234,7 +234,11 @@
     }
 
     async function handleSubmit() {
-        if (!formData.name || !formData.price) {
+        if (
+            !formData.name ||
+            formData.price === null ||
+            formData.price === undefined
+        ) {
             alert("Nama dan Harga wajib diisi");
             return;
         }
@@ -665,8 +669,8 @@
                     />
                     <p class="text-[10px] text-gray-400 mt-1">
                         * Set <b>0</b> jika ini adalah menu <b>Prasmanan</b>
-                        (harga hanya dari pilihan), atau isi harga dasar jika
-                        ini menu dengan <b>Topping</b>.
+                        (harga hanya dari pilihan), atau isi harga dasar jika ini
+                        menu dengan <b>Topping</b>.
                     </p>
                 </div>
 
