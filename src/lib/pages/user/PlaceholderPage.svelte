@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { supabase } from "../../services/supabase";
+  import { supabase, getAuthRedirectUrl } from "../../services/supabase";
   export let title: string = "Halaman";
   export let user: any = null;
 
@@ -10,7 +10,7 @@
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: getAuthRedirectUrl(),
       },
     });
     if (error) console.error("Error logging in:", error.message);

@@ -9,82 +9,135 @@
     export let onAdd: (item: any) => void;
 
     const dispatch = createEventDispatcher();
-    let packageItems: any[] = [];
-    let selectedItemIds: string[] = [];
-    let loadingPackage = false;
+    let optionGroups: any[] = [];
+    let selectedOptions: Record<string, string[]> = {}; // groupId -> array of itemIds
+    let loadingOptions = false;
 
-    onMount(async () => {
-        if (show && item?.is_package) {
-            await fetchPackageItems();
-        }
-    });
+    // Reset state when modal closes
+    $: if (!show) {
+        optionGroups = [];
+        selectedOptions = {};
+    }
 
-    async function fetchPackageItems() {
+    // Fetch options when item changes or modal opens
+    $: if (show && item?.type === "package" && optionGroups.length === 0) {
+        fetchOptions();
+    }
+
+    async function fetchOptions() {
         if (!item?.id) return;
-        loadingPackage = true;
+        loadingOptions = true;
         try {
             const { data, error } = await supabase
-                .from("menu_package_items")
+                .from("menu_option_groups")
                 .select(
                     `
-          child_menu_id,
-          quantity,
-          menu_items!menu_package_items_child_menu_id_fkey (
-            name,
-            primary_image,
-            description
-          )
-        `,
+                    id, 
+                    name, 
+                    is_required, 
+                    min_selection, 
+                    max_selection,
+                    menu_option_items (
+                        id,
+                        name,
+                        additional_price,
+                        is_available
+                    )
+                `,
                 )
-                .eq("parent_menu_id", item.id);
+                .eq("menu_id", item.id)
+                .order("created_at", { ascending: true });
 
             if (error) throw error;
-            packageItems = data || [];
-            // Default: all selected
-            if (packageItems.length > 0) {
-                selectedItemIds = packageItems.map((p) => p.child_menu_id);
-            }
+            optionGroups = data || [];
+
+            // Initialize selectedOptions
+            const initial: Record<string, string[]> = {};
+            optionGroups.forEach((g) => {
+                initial[g.id] = [];
+            });
+            selectedOptions = initial;
         } catch (err) {
-            console.error("Error fetching package items:", err);
+            console.error("Error fetching menu options:", err);
         } finally {
-            loadingPackage = false;
+            loadingOptions = false;
         }
     }
 
-    // Reactive fetch when item changes or modal opens
-    $: if (show && item?.is_package && packageItems.length === 0) {
-        fetchPackageItems();
-    } else if (!show) {
-        packageItems = [];
-        selectedItemIds = [];
+    function toggleOption(
+        groupId: string,
+        optionId: string,
+        maxSelection: number,
+    ) {
+        const current = selectedOptions[groupId] || [];
+
+        if (current.includes(optionId)) {
+            // Unselect
+            selectedOptions[groupId] = current.filter((id) => id !== optionId);
+        } else {
+            // Select
+            if (maxSelection === 1) {
+                // Radio behavior
+                selectedOptions[groupId] = [optionId];
+            } else if (current.length < maxSelection) {
+                // Checkbox behavior with cap
+                selectedOptions[groupId] = [...current, optionId];
+            }
+        }
+        selectedOptions = { ...selectedOptions };
     }
 
     function handleClose() {
         dispatch("close");
     }
 
-    $: extraPriceTotal = packageItems
-        .filter((p) => selectedItemIds.includes(p.child_menu_id))
-        .reduce(
-            (sum, p) => sum + (p.additional_price || 0) * (p.quantity || 1),
-            0,
-        );
+    // Calculate total price based on selections
+    $: extraPriceTotal = optionGroups.reduce((total, group) => {
+        const selectedForGroup = selectedOptions[group.id] || [];
+        const groupPrice = group.menu_option_items
+            .filter((i: any) => selectedForGroup.includes(i.id))
+            .reduce(
+                (sum: number, i: any) => sum + (i.additional_price || 0),
+                0,
+            );
+        return total + groupPrice;
+    }, 0);
 
     $: finalPrice = (item.price || 0) + extraPriceTotal;
 
+    // Validation: ensure all required groups meet MIN requirement
+    $: isValid = optionGroups.every((group) => {
+        if (!group.is_required) return true;
+        const count = (selectedOptions[group.id] || []).length;
+        return count >= (group.min_selection || 1);
+    });
+
     function handleAddToCart() {
+        if (!isValid) return;
+
+        // Build a snapshot of customizations for the cart
+        const customizations = optionGroups
+            .map((group) => {
+                const items = group.menu_option_items.filter((i: any) =>
+                    (selectedOptions[group.id] || []).includes(i.id),
+                );
+                if (items.length === 0) return null;
+                return {
+                    group_name: group.name,
+                    selected_items: items.map((i: any) => ({
+                        name: i.name,
+                        price: i.additional_price,
+                    })),
+                };
+            })
+            .filter(Boolean);
+
         const itemWithSelection = {
             ...item,
-            price: finalPrice, // Use calculated price
-            package_items: packageItems
-                .filter((p) => selectedItemIds.includes(p.child_menu_id))
-                .map((p) => ({
-                    id: p.child_menu_id,
-                    name: p.menu_items?.name,
-                    qty: p.quantity,
-                    extra_price: p.additional_price,
-                })),
+            final_price: finalPrice,
+            customizations,
         };
+
         onAdd(itemWithSelection);
         handleClose();
     }
@@ -166,109 +219,105 @@
                         </p>
                     </div>
 
-                    <!-- Package Items Section -->
-                    {#if item.is_package}
-                        <div class="mt-6">
-                            <h3
-                                class="text-sm font-black text-gray-900 mb-4 px-1 flex items-center justify-between"
-                            >
-                                <span>📦 Isi Paket Ini</span>
-                                {#if loadingPackage}
+                    <!-- Customization Options -->
+                    {#if item.type === "package"}
+                        <div class="space-y-6">
+                            {#if loadingOptions}
+                                <div class="flex justify-center p-8">
                                     <Loader2
-                                        size={16}
                                         class="animate-spin text-primary"
                                     />
-                                {/if}
-                            </h3>
-
-                            {#if packageItems.length > 0}
-                                <div class="space-y-3">
-                                    {#each packageItems as pItem}
-                                        <!-- svelte-ignore a11y-click-events-have-key-events -->
-                                        <!-- svelte-ignore a11y-no-static-element-interactions -->
+                                </div>
+                            {:else}
+                                {#each optionGroups as group}
+                                    <div class="space-y-3">
                                         <div
-                                            class="flex items-center gap-3 p-3 bg-white border {selectedItemIds.includes(
-                                                pItem.child_menu_id,
-                                            )
-                                                ? 'border-primary shadow-md shadow-primary/5'
-                                                : 'border-gray-100'} rounded-2xl transition-all cursor-pointer"
-                                            on:click={() => {
-                                                if (
-                                                    selectedItemIds.includes(
-                                                        pItem.child_menu_id,
-                                                    )
-                                                ) {
-                                                    selectedItemIds =
-                                                        selectedItemIds.filter(
-                                                            (id) =>
-                                                                id !==
-                                                                pItem.child_menu_id,
-                                                        );
-                                                } else {
-                                                    selectedItemIds = [
-                                                        ...selectedItemIds,
-                                                        pItem.child_menu_id,
-                                                    ];
-                                                }
-                                            }}
+                                            class="flex items-center justify-between px-1"
                                         >
-                                            <div
-                                                class="w-12 h-12 rounded-xl bg-gray-50 overflow-hidden flex-shrink-0 border border-gray-50"
+                                            <h3
+                                                class="text-sm font-black text-gray-900 uppercase tracking-tighter flex items-center gap-2"
                                             >
-                                                <img
-                                                    src={getOptimizedImageUrl(
-                                                        pItem.menu_items
-                                                            ?.primary_image ||
-                                                            "",
-                                                        150,
-                                                    )}
-                                                    alt={pItem.menu_items?.name}
-                                                    class="w-full h-full object-cover"
-                                                />
-                                            </div>
-                                            <div class="flex-1">
-                                                <h5
-                                                    class="text-sm font-bold text-gray-900 leading-tight"
-                                                >
-                                                    {pItem.menu_items?.name}
-                                                </h5>
-                                                <p
-                                                    class="text-[10px] text-gray-400 font-medium"
-                                                >
-                                                    Jumlah: {pItem.quantity ||
-                                                        1}
-                                                    {#if pItem.additional_price > 0}
-                                                        • <span
-                                                            class="text-primary font-black"
-                                                            >+ Rp {pItem.additional_price.toLocaleString()}</span
-                                                        >
-                                                    {/if}
-                                                </p>
-                                            </div>
-                                            <div
-                                                class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors {selectedItemIds.includes(
-                                                    pItem.child_menu_id,
-                                                )
-                                                    ? 'bg-primary border-primary text-white'
-                                                    : 'border-gray-200'}"
-                                            >
-                                                {#if selectedItemIds.includes(pItem.child_menu_id)}
-                                                    <Check
-                                                        size={14}
-                                                        strokeWidth={4}
-                                                    />
+                                                {group.name}
+                                                {#if group.is_required}
+                                                    <span
+                                                        class="text-[9px] bg-red-500 text-white px-1.5 py-0.5 rounded leading-none"
+                                                        >WAJIB</span
+                                                    >
                                                 {/if}
-                                            </div>
+                                            </h3>
+                                            <p
+                                                class="text-[10px] font-bold text-gray-400"
+                                            >
+                                                {#if group.max_selection === 1}
+                                                    PILIH 1
+                                                {:else}
+                                                    MING/MAX: {group.min_selection}/{group.max_selection}
+                                                {/if}
+                                            </p>
                                         </div>
-                                    {/each}
-                                </div>
-                            {:else if !loadingPackage}
-                                <div
-                                    class="bg-orange-50 text-orange-600 p-4 rounded-2xl text-xs font-bold border border-orange-100 flex items-center gap-2"
-                                >
-                                    <Info size={14} /> Toko belum menambahkan daftar
-                                    item ke paket ini.
-                                </div>
+
+                                        <div class="grid grid-cols-1 gap-2">
+                                            {#each group.menu_option_items as choice}
+                                                {@const isSelected = (
+                                                    selectedOptions[group.id] ||
+                                                    []
+                                                ).includes(choice.id)}
+                                                <!-- svelte-ignore a11y-click-events-have-key-events -->
+                                                <!-- svelte-ignore a11y-no-static-element-interactions -->
+                                                <div
+                                                    class="flex items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer {isSelected
+                                                        ? 'border-primary bg-primary/5'
+                                                        : 'border-gray-50 bg-white hover:border-gray-200'}"
+                                                    on:click={() =>
+                                                        toggleOption(
+                                                            group.id,
+                                                            choice.id,
+                                                            group.max_selection,
+                                                        )}
+                                                >
+                                                    <div class="flex-1">
+                                                        <p
+                                                            class="text-sm font-bold {isSelected
+                                                                ? 'text-primary'
+                                                                : 'text-gray-700'}"
+                                                        >
+                                                            {choice.name}
+                                                        </p>
+                                                        {#if choice.additional_price > 0}
+                                                            <p
+                                                                class="text-[10px] font-black text-gray-400"
+                                                            >
+                                                                + Rp {choice.additional_price.toLocaleString()}
+                                                            </p>
+                                                        {/if}
+                                                    </div>
+                                                    <div
+                                                        class="w-6 h-6 rounded-full border-2 flex items-center justify-center {isSelected
+                                                            ? 'bg-primary border-primary text-white'
+                                                            : 'border-gray-200'}"
+                                                    >
+                                                        {#if isSelected}<Check
+                                                                size={14}
+                                                                strokeWidth={4}
+                                                            />{/if}
+                                                    </div>
+                                                </div>
+                                            {/each}
+                                        </div>
+                                    </div>
+                                {/each}
+                                {#if optionGroups.length === 0}
+                                    <div
+                                        class="text-center py-8 bg-orange-50 rounded-2xl border border-dashed border-orange-200"
+                                    >
+                                        <p
+                                            class="text-xs font-bold text-orange-600"
+                                        >
+                                            Menu kustomisasi ini belum memiliki
+                                            pilihan.
+                                        </p>
+                                    </div>
+                                {/if}
                             {/if}
                         </div>
                     {/if}
@@ -281,12 +330,33 @@
             >
                 <button
                     on:click={handleAddToCart}
-                    class="w-full h-14 bg-gray-900 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-3 shadow-xl active:scale-[0.98] transition-all"
+                    disabled={!isValid || loadingOptions}
+                    class="w-full h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-3 shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 disabled:bg-gray-200 disabled:text-gray-400 {isValid
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-gray-100 text-gray-400'}"
                 >
                     <ShoppingBag size={20} />
-                    Tambah ke Keranjang • Rp {finalPrice.toLocaleString()}
+                    {#if !isValid}
+                        Mohon Lengkapi Pilihan
+                    {:else}
+                        Tambah ke Keranjang • Rp {finalPrice.toLocaleString()}
+                    {/if}
                 </button>
             </div>
         </div>
     </div>
 {/if}
+
+<style>
+    .animate-in {
+        animation: animateIn 0.3s ease-out;
+    }
+    @keyframes animateIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+</style>

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { supabase } from "../../services/supabase";
+  import { supabase, getAuthRedirectUrl } from "../../services/supabase";
   export let user: any = null;
 
   let activeTab = "Semua";
@@ -70,7 +70,7 @@
     if (!agreed) return;
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: getAuthRedirectUrl() },
     });
   }
 

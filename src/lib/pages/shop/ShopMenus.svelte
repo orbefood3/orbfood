@@ -28,7 +28,7 @@
     let loading = true;
     let searchQuery = "";
     let currentPage = 1;
-    let itemsPerPage = 8; // Slightly reduced for better grid fit if moved to grid later, but fine for table
+    let itemsPerPage = 8;
     let totalItems = 0;
     let searchTimeout: any;
     let hasMore = true;
@@ -47,9 +47,9 @@
         category: "makanan",
         primary_image: "",
         is_available: true,
-        is_package: false,
+        type: "single", // 'single' | 'package'
     };
-    let packageItemsSelection: any[] = []; // [{ child_menu_id: string, quantity: number, additional_price: number }]
+    let optionGroups: any[] = []; // [{ name: string, is_required: boolean, min_selection: number, max_selection: number, items: [{ name, additional_price, is_available }] }]
     let allShopMenus: any[] = [];
     let selectedFile: File | null = null;
     let previewUrl: string = "";
@@ -91,7 +91,6 @@
         loading = false;
 
         if (!append) {
-            // Also fetch all menus for package selection only on initial load or search
             const { data: allData } = await supabase
                 .from("menu_items")
                 .select("id, name")
@@ -141,39 +140,71 @@
             category: "makanan",
             primary_image: "",
             is_available: true,
-            is_package: false,
+            type: "single",
         };
         originalImageUrl = "";
-        packageItemsSelection = [];
+        optionGroups = [];
         showModal = true;
     }
 
-    async function fetchPackageItems(parentId: string) {
-        const { data, error } = await supabase
-            .from("menu_package_items")
-            .select("child_menu_id, quantity, additional_price")
-            .eq("parent_menu_id", parentId);
+    async function fetchMenuOptions(menuId: string) {
+        const { data: groups, error: groupsError } = await supabase
+            .from("menu_option_groups")
+            .select("*, menu_option_items(*)")
+            .eq("menu_id", menuId)
+            .order("created_at", { ascending: true });
 
-        if (!error && data) {
-            packageItemsSelection = data || [];
+        if (!groupsError && groups) {
+            optionGroups = groups.map((g) => ({
+                id: g.id,
+                name: g.name,
+                is_required: g.is_required,
+                min_selection: g.min_selection,
+                max_selection: g.max_selection,
+                items: g.menu_option_items.map((i: any) => ({
+                    id: i.id,
+                    name: i.name,
+                    additional_price: i.additional_price,
+                    is_available: i.is_available,
+                })),
+            }));
         }
     }
 
-    function handlePackageItemToggle(menuId: string, checked: boolean) {
-        if (checked) {
-            packageItemsSelection = [
-                ...packageItemsSelection,
-                {
-                    child_menu_id: menuId,
-                    quantity: 1,
-                    additional_price: 0,
-                },
-            ];
-        } else {
-            packageItemsSelection = packageItemsSelection.filter(
-                (p) => p.child_menu_id !== menuId,
-            );
-        }
+    function addOptionGroup() {
+        optionGroups = [
+            ...optionGroups,
+            {
+                name: "",
+                is_required: true,
+                min_selection: 1,
+                max_selection: 1,
+                items: [{ name: "", additional_price: 0, is_available: true }],
+            },
+        ];
+    }
+
+    function removeOptionGroup(index: number) {
+        optionGroups = optionGroups.filter((_, i) => i !== index);
+    }
+
+    function addOptionItem(groupIndex: number) {
+        optionGroups[groupIndex].items = [
+            ...optionGroups[groupIndex].items,
+            {
+                name: "",
+                additional_price: 0,
+                is_available: true,
+            },
+        ];
+        optionGroups = [...optionGroups];
+    }
+
+    function removeOptionItem(groupIndex: number, itemIndex: number) {
+        optionGroups[groupIndex].items = optionGroups[groupIndex].items.filter(
+            (_: any, i: number) => i !== itemIndex,
+        );
+        optionGroups = [...optionGroups];
     }
 
     function openEditModal(menu: any) {
@@ -183,9 +214,9 @@
         previewUrl = "";
         formData = { ...menu };
         originalImageUrl = menu.primary_image || "";
-        packageItemsSelection = [];
-        if (menu.is_package) {
-            fetchPackageItems(menu.id);
+        optionGroups = [];
+        if (menu.type === "package") {
+            fetchMenuOptions(menu.id);
         }
         showModal = true;
     }
@@ -194,7 +225,6 @@
         const file = event.target.files[0];
         if (file) {
             if (file.size > 5 * 1024 * 1024) {
-                // 5MB limit
                 alert("Ukuran gambar maksimal 5MB");
                 return;
             }
@@ -211,7 +241,6 @@
 
         let newImageUrl = formData.primary_image;
 
-        // Upload Image if selected
         if (selectedFile) {
             try {
                 isUploading = true;
@@ -235,7 +264,7 @@
             category: formData.category,
             primary_image: formData.primary_image,
             is_available: formData.is_available,
-            is_package: formData.is_package,
+            type: formData.type,
         };
 
         let error;
@@ -257,25 +286,41 @@
             if (insertData) savedMenuId = insertData.id;
         }
 
-        if (!error && formData.is_package && savedMenuId) {
-            // Update package items
-            // First delete existing
+        if (!error && formData.type === "package" && savedMenuId) {
             await supabase
-                .from("menu_package_items")
+                .from("menu_option_groups")
                 .delete()
-                .eq("parent_menu_id", savedMenuId);
+                .eq("menu_id", savedMenuId);
 
-            // Insert new selections
-            if (packageItemsSelection.length > 0) {
-                const packageInserts = packageItemsSelection.map((item) => ({
-                    parent_menu_id: savedMenuId,
-                    child_menu_id: item.child_menu_id,
-                    quantity: item.quantity || 1,
-                    additional_price: item.additional_price || 0,
-                }));
-                await supabase
-                    .from("menu_package_items")
-                    .insert(packageInserts);
+            for (const group of optionGroups) {
+                const { data: groupData, error: groupError } = await supabase
+                    .from("menu_option_groups")
+                    .insert({
+                        menu_id: savedMenuId,
+                        name: group.name,
+                        is_required: group.is_required,
+                        min_selection: group.min_selection,
+                        max_selection: group.max_selection,
+                    })
+                    .select()
+                    .single();
+
+                if (!groupError && groupData && group.items.length > 0) {
+                    const itemInserts = group.items
+                        .filter((i: any) => i.name.trim() !== "")
+                        .map((i: any) => ({
+                            group_id: groupData.id,
+                            name: i.name,
+                            additional_price: i.additional_price || 0,
+                            is_available: i.is_available,
+                        }));
+
+                    if (itemInserts.length > 0) {
+                        await supabase
+                            .from("menu_option_items")
+                            .insert(itemInserts);
+                    }
+                }
             }
         }
 
@@ -304,7 +349,6 @@
 
     async function toggleAvailability(menu: any) {
         const newStatus = !menu.is_available;
-        // Optimistic update
         menus = menus.map((m) =>
             m.id === menu.id ? { ...m, is_available: newStatus } : m,
         );
@@ -315,7 +359,6 @@
             .eq("id", menu.id);
 
         if (error) {
-            // Revert if error
             menus = menus.map((m) =>
                 m.id === menu.id ? { ...m, is_available: !newStatus } : m,
             );
@@ -333,15 +376,13 @@
 
     $: totalPages = Math.ceil(totalItems / itemsPerPage);
 
-    // Automatically set is_package true when category is 'paket'
     $: if (formData.category === "paket") {
-        formData.is_package = true;
+        formData.type = "package";
     }
 </script>
 
 <PageWrapper>
     <div class="space-y-6">
-        <!-- Header -->
         <div
             class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
         >
@@ -366,7 +407,6 @@
             </button>
         </div>
 
-        <!-- Content -->
         {#if loading}
             <div class="flex justify-center p-12">
                 <LoadingSpinner />
@@ -448,9 +488,8 @@
                                     </td>
                                     <td
                                         class="px-6 py-4 text-sm font-medium text-gray-900"
+                                        >{formatPrice(menu.price)}</td
                                     >
-                                        {formatPrice(menu.price)}
-                                    </td>
                                     <td class="px-6 py-4">
                                         <button
                                             on:click={() =>
@@ -476,18 +515,15 @@
                                                     openEditModal(menu)}
                                                 class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
                                                 title="Edit Menu"
+                                                ><Pencil size={18} /></button
                                             >
-                                                <Pencil size={18} />
-                                            </button>
-
                                             <button
                                                 on:click={() =>
                                                     deleteMenu(menu)}
                                                 class="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                                                 title="Hapus Menu"
+                                                ><Trash2 size={18} /></button
                                             >
-                                                <Trash2 size={18} />
-                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -496,29 +532,23 @@
                     </table>
                 </div>
             </div>
-
-            <!-- Infinite Scroll Trigger -->
             {#if hasMore}
                 <div bind:this={loadMoreRef} class="flex justify-center p-8">
-                    {#if loading && menus.length > 0}
-                        <LoadingSpinner size="sm" />
-                    {/if}
+                    {#if loading && menus.length > 0}<LoadingSpinner
+                            size="sm"
+                        />{/if}
                 </div>
             {/if}
         {/if}
     </div>
 </PageWrapper>
 
-<!-- Add/Edit Modal -->
 {#if showModal}
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
             class="absolute inset-0 bg-black/50 backdrop-blur-sm"
             on:click={() => (showModal = false)}
         ></div>
-
         <div
             class="relative bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in"
         >
@@ -531,22 +561,18 @@
                 <button
                     on:click={() => (showModal = false)}
                     class="text-gray-400 hover:text-gray-600"
+                    ><X size={20} /></button
                 >
-                    <X size={20} />
-                </button>
             </div>
 
             <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                <!-- Image Upload -->
                 <div>
                     <label
                         for="image-upload"
                         class="block text-sm font-medium text-gray-700 mb-2"
                         >Foto Menu</label
                     >
-
                     <div class="flex items-center gap-4">
-                        <!-- Preview -->
                         <div
                             class="w-20 h-20 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden shrink-0 relative group"
                         >
@@ -560,18 +586,14 @@
                                     alt="Preview"
                                     class="w-full h-full object-cover"
                                 />
-                                {#if previewUrl || (formData.primary_image && isEditing)}
-                                    <div
-                                        class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                                    >
-                                        <Pencil size={16} class="text-white" />
-                                    </div>
-                                {/if}
+                                <div
+                                    class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
+                                >
+                                    <Pencil size={16} />
+                                </div>
                             {:else}
                                 <ImageIcon size={24} class="text-gray-400" />
                             {/if}
-
-                            <!-- Hidden Input -->
                             <input
                                 id="image-upload"
                                 type="file"
@@ -580,40 +602,21 @@
                                 class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             />
                         </div>
-
                         <div class="flex-1">
-                            {#if !selectedFile && !formData.primary_image}
-                                <label
-                                    for="image-upload"
-                                    class="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                                >
-                                    <UploadCloud size={18} />
-                                    Pilih Foto
-                                </label>
-                                <p class="text-xs text-gray-500 mt-2">
-                                    Format: JPG, PNG, WEBP. Maks 5MB.
-                                </p>
-                            {:else}
-                                <div class="flex flex-col gap-2">
-                                    <label
-                                        for="image-upload"
-                                        class="cursor-pointer text-sm text-blue-600 hover:underline"
-                                    >
-                                        Ganti Foto
-                                    </label>
-                                    {#if selectedFile}
-                                        <span
-                                            class="text-xs text-gray-500 truncate max-w-[200px]"
-                                            >{selectedFile.name} (Siap Upload)</span
-                                        >
-                                    {/if}
-                                </div>
-                            {/if}
+                            <label
+                                for="image-upload"
+                                class="cursor-pointer text-sm text-blue-600 hover:underline"
+                                >{previewUrl || formData.primary_image
+                                    ? "Ganti Foto"
+                                    : "Pilih Foto"}</label
+                            >
+                            <p class="text-xs text-gray-500 mt-1">
+                                Maks 5MB (JPG/PNG)
+                            </p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Name -->
                 <div>
                     <label
                         for="menu-name"
@@ -625,11 +628,10 @@
                         type="text"
                         bind:value={formData.name}
                         placeholder="Contoh: Nasi Goreng Spesial"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none text-sm"
                     />
                 </div>
 
-                <!-- Category -->
                 <div>
                     <label
                         for="menu-category"
@@ -639,17 +641,15 @@
                     <select
                         id="menu-category"
                         bind:value={formData.category}
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm bg-white"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none text-sm bg-white"
                     >
-                        {#each categories as category}
-                            <option value={category} class="capitalize"
-                                >{category}</option
-                            >
-                        {/each}
+                        {#each categories as category}<option
+                                value={category}
+                                class="capitalize">{category}</option
+                            >{/each}
                     </select>
                 </div>
 
-                <!-- Price -->
                 <div>
                     <label
                         for="menu-price"
@@ -661,12 +661,10 @@
                         type="number"
                         bind:value={formData.price}
                         placeholder="0"
-                        min="0"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none text-sm"
                     />
                 </div>
 
-                <!-- Description -->
                 <div>
                     <label
                         for="menu-desc"
@@ -678,132 +676,175 @@
                         bind:value={formData.description}
                         placeholder="Jelaskan detail menu..."
                         rows="3"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm"
-                    />
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none text-sm"
+                    ></textarea>
                 </div>
 
-                <!-- Availability -->
                 <div class="flex items-center gap-2">
                     <input
                         type="checkbox"
                         id="available"
                         bind:checked={formData.is_available}
-                        class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
+                        class="rounded text-primary focus:ring-primary"
                     />
                     <label for="available" class="text-sm text-gray-700"
                         >Tersedia untuk dipesan</label
                     >
                 </div>
 
-                <div class="flex items-center gap-2">
-                    <input
-                        type="checkbox"
-                        id="is_package"
-                        bind:checked={formData.is_package}
-                        class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
-                    />
-                    <label
-                        for="is_package"
-                        class="text-sm font-bold text-gray-900"
-                        >Menu ini adalah Paket (Bundle)</label
-                    >
-                </div>
-
-                {#if formData.is_package}
-                    <div class="pt-4 border-t border-gray-100">
-                        <span class="block text-sm font-bold text-gray-700 mb-2"
-                            >Pilih Isi Paket</span
+                <div class="pt-4 border-t border-gray-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <label class="text-sm font-bold text-gray-900"
+                            >Kustomisasi Menu</label
                         >
-                        <div
-                            class="max-h-64 overflow-y-auto space-y-4 border border-gray-200 rounded-lg p-2 bg-gray-50"
+                        <select
+                            bind:value={formData.type}
+                            class="text-xs border border-gray-200 rounded px-2 py-1 bg-gray-50 outline-none focus:ring-1 focus:ring-primary"
                         >
-                            {#each allShopMenus.filter((m) => m.id !== formData.id && !m.is_package) as menu}
-                                {@const selectedIndex =
-                                    packageItemsSelection.findIndex(
-                                        (p) => p.child_menu_id === menu.id,
-                                    )}
-                                {@const isSelected = selectedIndex !== -1}
+                            <option value="single">Single Item</option>
+                            <option value="package"
+                                >Customizable (Prasmanan)</option
+                            >
+                        </select>
+                    </div>
 
+                    {#if formData.type === "package"}
+                        <div class="space-y-6">
+                            {#each optionGroups as group, gIndex}
                                 <div
-                                    class="p-3 bg-white rounded-xl border {isSelected
-                                        ? 'border-primary ring-1 ring-primary/20'
-                                        : 'border-gray-100'} transition-all shadow-sm"
+                                    class="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-4 relative group"
                                 >
-                                    <label
-                                        class="flex items-center gap-3 cursor-pointer mb-3"
+                                    <button
+                                        on:click={() =>
+                                            removeOptionGroup(gIndex)}
+                                        class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors z-10"
+                                        ><X size={14} /></button
                                     >
-                                        <input
-                                            type="checkbox"
-                                            checked={isSelected}
-                                            on:change={(e) =>
-                                                handlePackageItemToggle(
-                                                    menu.id,
-                                                    e.currentTarget.checked,
-                                                )}
-                                            class="rounded text-primary focus:ring-primary h-5 w-5"
-                                        />
-                                        <span
-                                            class="text-sm font-black text-gray-900 flex-1"
-                                            >{menu.name}</span
-                                        >
-                                    </label>
-
-                                    {#if isSelected}
+                                    <div class="grid grid-cols-1 gap-3">
+                                        <div>
+                                            <label
+                                                class="block text-[10px] font-black text-gray-400 uppercase mb-1"
+                                                >Nama Grup (misal: Topping)</label
+                                            >
+                                            <input
+                                                type="text"
+                                                bind:value={group.name}
+                                                placeholder="Nama grup..."
+                                                class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold outline-none"
+                                            />
+                                        </div>
                                         <div
-                                            class="grid grid-cols-2 gap-3 pl-8 pt-2 border-t border-gray-50"
+                                            class="flex items-center gap-4 py-1"
                                         >
-                                            <div>
-                                                <label
-                                                    class="block text-[10px] font-black text-gray-400 uppercase mb-1"
-                                                    >Jumlah</label
-                                                >
-                                                <input
-                                                    type="number"
-                                                    bind:value={
-                                                        packageItemsSelection[
-                                                            selectedIndex
-                                                        ].quantity
+                                            <label
+                                                class="flex items-center gap-2 cursor-pointer"
+                                                ><input
+                                                    type="checkbox"
+                                                    bind:checked={
+                                                        group.is_required
                                                     }
-                                                    min="1"
-                                                    class="w-full px-2 py-1.5 bg-gray-50 border border-gray-100 rounded-lg text-xs font-bold focus:ring-1 focus:ring-primary outline-none"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label
-                                                    class="block text-[10px] font-black text-gray-400 uppercase mb-1"
-                                                    >Harga Tam. (Rp)</label
-                                                >
-                                                <input
+                                                    class="rounded text-primary"
+                                                /><span
+                                                    class="text-xs font-bold text-gray-700"
+                                                    >Wajib</span
+                                                ></label
+                                            >
+                                            <div
+                                                class="flex items-center gap-2"
+                                            >
+                                                <span
+                                                    class="text-[10px] font-black text-gray-400"
+                                                    >Min:</span
+                                                ><input
                                                     type="number"
                                                     bind:value={
-                                                        packageItemsSelection[
-                                                            selectedIndex
-                                                        ].additional_price
+                                                        group.min_selection
                                                     }
                                                     min="0"
-                                                    placeholder="0"
-                                                    class="w-full px-2 py-1.5 bg-gray-50 border border-gray-100 rounded-lg text-xs font-bold focus:ring-1 focus:ring-primary outline-none"
+                                                    class="w-12 px-1 py-0.5 text-xs border border-gray-200 rounded"
+                                                />
+                                            </div>
+                                            <div
+                                                class="flex items-center gap-2"
+                                            >
+                                                <span
+                                                    class="text-[10px] font-black text-gray-400"
+                                                    >Max:</span
+                                                ><input
+                                                    type="number"
+                                                    bind:value={
+                                                        group.max_selection
+                                                    }
+                                                    min="1"
+                                                    class="w-12 px-1 py-0.5 text-xs border border-gray-200 rounded"
                                                 />
                                             </div>
                                         </div>
-                                    {/if}
+                                    </div>
+                                    <div
+                                        class="space-y-2 pt-2 border-t border-gray-200/50"
+                                    >
+                                        {#each group.items as item, iIndex}
+                                            <div
+                                                class="flex items-center gap-2"
+                                            >
+                                                <input
+                                                    type="text"
+                                                    bind:value={item.name}
+                                                    placeholder="Item..."
+                                                    class="flex-1 px-2 py-1.5 bg-white border border-gray-100 rounded text-xs outline-none"
+                                                />
+                                                <div
+                                                    class="flex items-center gap-1 bg-white border border-gray-100 rounded px-1.5"
+                                                >
+                                                    <span
+                                                        class="text-[10px] text-gray-400 font-bold"
+                                                        >Rp</span
+                                                    ><input
+                                                        type="number"
+                                                        bind:value={
+                                                            item.additional_price
+                                                        }
+                                                        class="w-16 py-1.5 text-xs font-bold outline-none"
+                                                    />
+                                                </div>
+                                                <button
+                                                    on:click={() =>
+                                                        removeOptionItem(
+                                                            gIndex,
+                                                            iIndex,
+                                                        )}
+                                                    class="p-1 text-gray-300 hover:text-red-500"
+                                                    ><Trash2
+                                                        size={14}
+                                                    /></button
+                                                >
+                                            </div>
+                                        {/each}
+                                        <button
+                                            on:click={() =>
+                                                addOptionItem(gIndex)}
+                                            class="w-full py-2 mt-2 rounded-lg border border-dashed border-gray-300 text-gray-400 hover:text-primary transition-all text-[10px] font-black uppercase flex items-center justify-center gap-2"
+                                            ><Plus size={12} /> Tambah Item</button
+                                        >
+                                    </div>
                                 </div>
                             {/each}
-                            {#if allShopMenus.filter((m) => m.id !== formData.id && !m.is_package).length === 0}
-                                <p
-                                    class="text-xs text-gray-400 text-center py-4"
-                                >
-                                    Belum ada menu lain untuk dimasukkan ke
-                                    paket.
-                                </p>
-                            {/if}
+                            <button
+                                on:click={addOptionGroup}
+                                class="w-full py-3 rounded-xl border-2 border-dashed border-primary/20 text-primary hover:bg-primary/5 transition-all font-bold text-xs flex items-center justify-center gap-2"
+                                ><Plus size={16} /> Tambah Grup Baru</button
+                            >
                         </div>
-                        <p class="text-[10px] text-gray-400 mt-2">
-                            * Menu paket hanya bisa berisi menu satuan (bukan
-                            paket lain).
+                    {:else}
+                        <p
+                            class="text-xs text-gray-400 text-center py-4 italic"
+                        >
+                            Pilih tipe "Customizable" untuk menambahkan pilihan
+                            kustomisasi.
                         </p>
-                    </div>
-                {/if}
+                    {/if}
+                </div>
             </div>
 
             <div
@@ -813,23 +854,16 @@
                     on:click={() => (showModal = false)}
                     disabled={isUploading}
                     class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    >Batal</button
                 >
-                    Batal
-                </button>
                 <button
                     on:click={handleSubmit}
                     disabled={isUploading}
                     class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                    {#if isUploading}
-                        <div
+                    >{#if isUploading}<div
                             class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
-                        ></div>
-                        Mengupload...
-                    {:else}
-                        <Check size={16} /> Simpan
-                    {/if}
-                </button>
+                        ></div>{:else}<Check size={16} /> Simpan{/if}</button
+                >
             </div>
         </div>
     </div>
@@ -839,7 +873,6 @@
     .animate-fade-in {
         animation: fadeIn 0.2s ease-out;
     }
-
     @keyframes fadeIn {
         from {
             opacity: 0;

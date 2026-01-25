@@ -2,11 +2,11 @@
   import {
     cart,
     cartTotal,
-    updateQuantity,
-    removeFromCart,
+    updateQuantityByIndex,
+    removeItemByIndex,
     clearCart,
   } from "../../stores/cartStore";
-  import { supabase } from "../../services/supabase";
+  import { supabase, getAuthRedirectUrl } from "../../services/supabase";
 
   export let user: any = null;
   export let onBack: () => void;
@@ -65,10 +65,10 @@
           items: $cart.map((item) => ({
             menu_id: item.id,
             name: item.name,
-            price: item.price,
+            price: item.final_price || item.price,
             qty: item.quantity || 1,
             image: item.primary_image || item.image,
-            package_items: item.package_items || [],
+            customizations: item.customizations || [],
           })),
           total_price: $cartTotal,
           customer_name: customerName,
@@ -84,12 +84,17 @@
       // 4. Proceed to WhatsApp
       const itemsText = $cart
         .map((item) => {
-          let text = `- ${item.name} (${item.quantity || 1}) - Rp ${(item.price * (item.quantity || 1)).toLocaleString()}`;
-          if (item.package_items && item.package_items.length > 0) {
-            const subItems = item.package_items
-              .map((si: any) => `  • ${si.name}`)
+          let text = `- ${item.name} (${item.quantity || 1}) - Rp ${((item.final_price || item.price) * (item.quantity || 1)).toLocaleString()}`;
+          if (item.customizations && item.customizations.length > 0) {
+            const custText = item.customizations
+              .map((c: any) => {
+                const choices = c.selected_items
+                  .map((si: any) => si.name)
+                  .join(", ");
+                return `  • ${c.group_name}: ${choices}`;
+              })
               .join("\n");
-            text += `\n  Isi Paket:\n${subItems}`;
+            text += `\n${custText}`;
           }
           return text;
         })
@@ -131,7 +136,7 @@ Lokasi saya akan saya kirimkan setelah ini.`;
   async function loginWithGoogle() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: getAuthRedirectUrl() },
     });
   }
 </script>
@@ -156,21 +161,27 @@ Lokasi saya akan saya kirimkan setelah ini.`;
           <button class="clear-btn" on:click={clearCart}>Hapus Semua</button>
         </div>
 
-        {#each $cart as item}
+        {#each $cart as item, index}
           <div class="cart-item shadow-soft rounded-lg">
             <div class="item-info">
               <span class="item-name">{item.name}</span>
-              <span class="item-price">Rp {item.price.toLocaleString()}</span>
-              {#if item.package_items && item.package_items.length > 0}
-                <div class="package-details mt-1">
-                  <p class="text-[10px] font-black text-primary uppercase">
-                    Isi Paket:
-                  </p>
-                  <ul class="list-none space-y-0.5">
-                    {#each item.package_items as si}
-                      <li class="text-[11px] text-gray-500">• {si.name}</li>
-                    {/each}
-                  </ul>
+              <span class="item-price"
+                >Rp {(item.final_price || item.price).toLocaleString()}</span
+              >
+              {#if item.customizations && item.customizations.length > 0}
+                <div class="customization-details mt-1">
+                  {#each item.customizations as group}
+                    <div class="mb-1">
+                      <p
+                        class="text-[9px] font-black text-primary uppercase leading-none"
+                      >
+                        {group.group_name}:
+                      </p>
+                      <p class="text-[11px] text-gray-500 leading-tight">
+                        {group.selected_items.map((si) => si.name).join(", ")}
+                      </p>
+                    </div>
+                  {/each}
                 </div>
               {/if}
             </div>
@@ -179,13 +190,13 @@ Lokasi saya akan saya kirimkan setelah ini.`;
                 class="qty-btn"
                 on:click={() =>
                   item.quantity > 1
-                    ? updateQuantity(item.id, -1)
-                    : removeFromCart(item.id)}>−</button
+                    ? updateQuantityByIndex(index, -1)
+                    : removeItemByIndex(index)}>−</button
               >
               <span class="qty">{item.quantity || 1}</span>
               <button
                 class="qty-btn"
-                on:click={() => updateQuantity(item.id, 1)}>+</button
+                on:click={() => updateQuantityByIndex(index, 1)}>+</button
               >
             </div>
           </div>
