@@ -10,7 +10,13 @@
 
     <main class="content">
         <div class="legal-card rounded-lg shadow-soft">
-            <p class="updated">Terakhir diperbarui: 11 Januari 2026</p>
+            <p class="updated">
+                Terakhir diperbarui: {new Date().toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                })}
+            </p>
 
             <section>
                 <h2>1. Penerimaan Syarat</h2>
@@ -33,6 +39,10 @@
                     <li>Sistem pemesanan via WhatsApp</li>
                     <li>Riwayat pesanan untuk pengguna terdaftar</li>
                     <li>Dashboard untuk pemilik toko mengelola menu</li>
+                    <li>
+                        Fitur <strong>Group Order</strong> untuk memudahkan koordinasi
+                        pesanan kolektif antar pengguna.
+                    </li>
                 </ul>
             </section>
 
@@ -76,14 +86,48 @@
                 <h2>6. Transaksi dan Pembayaran</h2>
                 <p>
                     OrbFood <strong>tidak memproses pembayaran</strong>. Semua
-                    transaksi dilakukan langsung antara pelanggan dan toko
-                    melalui WhatsApp atau metode yang disepakati bersama. Kami
-                    tidak bertanggung jawab atas:
+                    transaksi dilakukan langsung antara pelanggan dan toko, atau
+                    antara Peserta dan Pembuat Room (dalam fitur Group Order).
+                    Kami tidak bertanggung jawab atas:
                 </p>
                 <ul>
-                    <li>Sengketa pembayaran antara pelanggan dan toko</li>
-                    <li>Kualitas produk yang diterima</li>
-                    <li>Keterlambatan pengiriman atau pickup</li>
+                    <li>
+                        Sengketa pembayaran antara pelanggan, toko, maupun antar
+                        pengguna (Peserta/Pembuat Room).
+                    </li>
+                    <li>
+                        Kualitas produk yang diterima atau layanan toko mitra.
+                    </li>
+                    <li>
+                        Validitas bukti transfer yang diunggah oleh pengguna.
+                    </li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>7. Tanggung Jawab Fitur Group Order</h2>
+                <p>Dalam fitur Group Order, pengguna setuju bahwa:</p>
+                <ul>
+                    <li>
+                        <strong>Pembuat Room</strong> bertanggung jawab penuh untuk
+                        memverifikasi pembayaran dari Peserta sebelum meneruskan
+                        pesanan ke toko.
+                    </li>
+                    <li>
+                        <strong>Peserta</strong> bertanggung jawab untuk memastikan
+                        dana dikirim ke akun/QRIS yang benar milik Pembuat Room.
+                    </li>
+                    <li>
+                        OrbFood hanya menyediakan media koordinasi dan tidak
+                        memegang dana atau menjamin keamanan transaksi P2P
+                        (Peer-to-Peer).
+                    </li>
+                    <li>
+                        Data bukti transfer akan <strong
+                            >dihapus secara otomatis</strong
+                        > saat room diselesaikan. OrbFood tidak bertanggung jawab
+                        atas hilangnya data bukti bayar setelah proses ini.
+                    </li>
                 </ul>
             </section>
 

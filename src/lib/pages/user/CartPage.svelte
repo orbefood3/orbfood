@@ -252,29 +252,6 @@
           clearCart();
           await handleOpenSummary();
           return; // Stay on CartPage to show modal
-        } else if (creatorProfile?.phone) {
-          // Redirect participant to Creator's WhatsApp
-          const itemsText = getWhatsAppItemsText($cart);
-          const message = `Halo! Saya ${customerName}. 
-Minta tolong masukin pesanan saya ke Room *${activeGroupOrder.name}*:
-
-${itemsText}
-
-Total: Rp ${$cartTotal.toLocaleString()}
-Catatan: ${notes || "-"}
-Bukti Bayar: (Saya lampirkan di chat ini ya!)
-
-Terima kasih!`;
-
-          const encodedMessage = encodeURIComponent(message);
-          const cleanCreatorWA = creatorProfile.phone
-            .replace(/^0/, "62")
-            .replace(/\D/g, "");
-
-          window.open(
-            `https://wa.me/${cleanCreatorWA}?text=${encodedMessage}`,
-            "_blank",
-          );
         }
 
         clearCart();
@@ -702,7 +679,7 @@ Lokasi saya akan saya kirimkan setelah ini.`;
         {#if isSubmitting}
           MEMPROSES...
         {:else if activeGroupOrder && !isCreator}
-          PESAN & KIRIM KE KETUA
+          PESAN ORDER GRUP
         {:else}
           PESAN VIA WHATSAPP
         {/if}
@@ -755,7 +732,6 @@ Lokasi saya akan saya kirimkan setelah ini.`;
       participants={roomParticipants}
       {isCreator}
       currentUserId={user?.id}
-      creatorPhone={creatorProfile?.phone}
       shopName={shopInfo?.name || "Toko"}
       on:close={() => {
         showSummaryModal = false;

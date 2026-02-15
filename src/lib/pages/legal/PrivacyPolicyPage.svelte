@@ -10,7 +10,13 @@
 
     <main class="content">
         <div class="legal-card rounded-lg shadow-soft">
-            <p class="updated">Terakhir diperbarui: 11 Januari 2026</p>
+            <p class="updated">
+                Terakhir diperbarui: {new Date().toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                })}
+            </p>
 
             <section>
                 <h2>1. Pendahuluan</h2>
@@ -40,6 +46,11 @@
                         dan total pembayaran
                     </li>
                     <li>
+                        <strong>Informasi Group Order:</strong> Data pembayaran (QRIS/Akun
+                        Bank) yang diatur oleh Pembuat Room, serta gambar Bukti Transfer
+                        yang diunggah oleh Peserta.
+                    </li>
+                    <li>
                         <strong>Lokasi:</strong> Desa yang Anda pilih untuk filter
                         toko terdekat
                     </li>
@@ -64,13 +75,24 @@
             </section>
 
             <section>
-                <h2>4. Penyimpanan Data</h2>
+                <h2>4. Penyimpanan dan Penghapusan Data</h2>
                 <p>
-                    Data Anda disimpan dengan aman menggunakan layanan Supabase
-                    yang berlokasi di server cloud. Kami menerapkan
-                    langkah-langkah keamanan standar industri untuk melindungi
-                    data Anda dari akses tidak sah.
+                    Data Anda disimpan dengan aman menggunakan layanan Supabase.
+                    Khusus untuk fitur <strong>Group Order</strong>, kami
+                    menerapkan kebijakan penghapusan otomatis:
                 </p>
+                <ul>
+                    <li>
+                        Gambar Bukti Transfer milik Peserta akan dihapus secara
+                        permanen dari sistem segera setelah Pembuat Room
+                        menyelesaikan pesanan (klik tombol "Kirim ke WA").
+                    </li>
+                    <li>
+                        Data QRIS Pembuat Room akan disimpan dalam profil hingga
+                        Pembuat Room memutuskan untuk menghapus atau
+                        memperbaruinya.
+                    </li>
+                </ul>
             </section>
 
             <section>

@@ -18,6 +18,7 @@
   import TermsOfServicePage from "./lib/pages/legal/TermsOfServicePage.svelte";
   import ToastContainer from "./lib/components/ui/ToastContainer.svelte";
   import InstallPrompt from "./lib/components/ui/InstallPrompt.svelte";
+  import { groupOrderStore } from "./lib/stores/groupOrderStore";
   import "./app.css";
 
   let activeTab = "home";
@@ -36,6 +37,7 @@
   }
 
   onMount(() => {
+    groupOrderStore.loadFromStorage();
     supabase.auth.getSession().then(({ data: { session } }) => {
       user = session?.user ?? null;
       if (user) {
@@ -110,10 +112,6 @@
       if (room && room.shops) {
         selectedStore = room.shops;
         // The StorePage will handle the room join logic based on groupOrderStore
-        // We import the store here or just set it
-        const { groupOrderStore } = await import(
-          "./lib/stores/groupOrderStore"
-        );
         groupOrderStore.setRoom(room);
         window.location.hash = `#/shop/${room.shops.slug}`;
       }

@@ -5,7 +5,6 @@
         User,
         Copy,
         MessageCircle,
-        FileImage,
         Eye,
         CheckCircle2,
         AlertCircle,
@@ -25,7 +24,6 @@
     export let isCreator: boolean = false;
     export let shopName: string = "";
     export let currentUserId: string = "";
-    export let creatorPhone: string = "";
 
     const dispatch = createEventDispatcher();
     let isCleaningUp = false;
@@ -115,16 +113,16 @@
     }
 
     function generateWhatsAppText() {
-        const header = `*ORDER GROUP - ${shopName.toUpperCase()}*\n${showOnlyVerified ? "_[Hanya Pesanan Terverifikasi]_" : ""}\n\n`;
+        const header = `*ORDER GRUP - ${shopName.toUpperCase()}*\nRoom: ${room.name}\n${showOnlyVerified ? "_[Hanya Pesanan Terverifikasi]_" : ""}\n\n`;
 
-        let itemsText = "";
+        let itemsText = "*DAFTAR PESANAN KOLEKTIF:*\n";
         Object.values(aggregatedItems).forEach((item) => {
             itemsText += `- ${item.name} x${item.qty}\n`;
         });
 
-        const footer = `\n*Total: Rp ${totalAmount.toLocaleString("id-ID")}*${showOnlyVerified ? `\n*(Terverifikasi: Rp ${verifiedAmount.toLocaleString("id-ID")})*` : ""}\n\n`;
+        const footer = `\n*GRAND TOTAL: Rp ${totalAmount.toLocaleString("id-ID")}*${showOnlyVerified ? `\n*(Terverifikasi: Rp ${verifiedAmount.toLocaleString("id-ID")})*` : ""}\n\n`;
 
-        let userDetails = "*Rincian per orang:*\n";
+        let userDetails = "*RINCIAN PESERTA:*\n";
         participants.forEach((p) => {
             if (showOnlyVerified && p.payment_status !== "verified") return;
             const statusIcon = p.payment_status === "verified" ? "✅" : "⏳";
@@ -135,32 +133,8 @@
         return fullText;
     }
 
-    function handleSendToCreator() {
-        const myOrder = participants.find((p) => p.user_id === currentUserId);
-        if (!myOrder) return;
-
-        let itemsText = "";
-        myOrder.items.forEach((item: any) => {
-            itemsText += `- ${item.name} x${item.qty}\n`;
-        });
-
-        const message = `Halo! Saya ${myOrder.participant_name}. 
-Minta tolong masukin pesanan saya ke Room *${room.name}*:
-
-${itemsText}
-Total: Rp ${myOrder.total_price.toLocaleString("id-ID")}
-Bukti Bayar: ${myOrder.transfer_proof_url || "Sudah di-upload"}
-
-Terima kasih!`;
-
-        const encodedMessage = encodeURIComponent(message);
-        const cleanPhone = creatorPhone.replace(/^0/, "62").replace(/\D/g, "");
-
-        window.open(
-            `https://wa.me/${cleanPhone}?text=${encodedMessage}`,
-            "_blank",
-        );
-    }
+    // WhatsApp for participants is now handled implicitly by the system sync
+    // (no longer needed as orders go to creator's "basket")
 
     async function handleVerify(participantId: string) {
         if (!isCreator) return;
@@ -294,8 +268,29 @@ Terima kasih!`;
                 <h3
                     class="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3 border-b pb-1"
                 >
-                    Total Pesanan
+                    Total Pesanan Kolektif
                 </h3>
+
+                {#if isCreator && !participants.some((p) => p.user_id === currentUserId)}
+                    <div
+                        class="bg-amber-50 border border-amber-200 p-3 rounded-lg flex items-start gap-3 mb-4"
+                    >
+                        <AlertCircle
+                            class="text-amber-500 shrink-0 mt-0.5"
+                            size={18}
+                        />
+                        <div class="text-[11px] text-amber-800">
+                            <p class="font-bold mb-0.5">
+                                Pesanan Anda belum masuk!
+                            </p>
+                            <p>
+                                Pastikan Anda sudah checkout Cart sendiri agar
+                                pesanan Anda ikut terhitung di GRAND TOTAL.
+                            </p>
+                        </div>
+                    </div>
+                {/if}
+
                 {#if Object.keys(aggregatedItems).length === 0}
                     <p class="text-gray-400 text-sm italic py-4 text-center">
                         Belum ada pesanan masuk.
@@ -534,19 +529,14 @@ Terima kasih!`;
             <div
                 class="p-4 border-t bg-blue-50 flex-shrink-0 flex flex-col gap-3"
             >
-                <p class="text-[11px] text-blue-700 font-medium text-center">
-                    Pesan kamu sudah terekap. Pastikan pembuat room sudah
-                    menerima detail pesananmu.
+                <div class="flex items-center gap-2 text-blue-700">
+                    <CheckCircle2 size={16} class="shrink-0" />
+                    <p class="text-[11px] font-bold">Pesananmu Aman!</p>
+                </div>
+                <p class="text-[11px] text-blue-600 leading-relaxed">
+                    Detail pesanan dan bukti transfermu sudah masuk ke rekap
+                    ketua room. Pantau terus status "LUNAS" kamu di sini ya!
                 </p>
-                {#if creatorPhone}
-                    <button
-                        class="w-full bg-green-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-green-700 transition-all shadow-md active:scale-[0.98]"
-                        on:click={handleSendToCreator}
-                    >
-                        <MessageCircle size={18} />
-                        Kirim ke Pembuat Room
-                    </button>
-                {/if}
             </div>
         {/if}
     </div>
