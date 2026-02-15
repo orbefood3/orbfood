@@ -15,6 +15,8 @@
   } from "lucide-svelte";
   import PlaceholderPage from "../user/PlaceholderPage.svelte";
   import AdminOrders from "../admin/AdminOrders.svelte";
+  import ShopGroupOrders from "./ShopGroupOrders.svelte";
+  import { Users as UsersIcon } from "lucide-svelte";
 
   export let user: any;
   export let profile: any;
@@ -37,6 +39,12 @@
       id: "orders",
       label: "Pesanan Masuk",
       icon: ShoppingBag,
+      badge: null,
+    },
+    {
+      id: "groups",
+      label: "Group Order",
+      icon: UsersIcon,
       badge: null,
     },
     { id: "settings", label: "Pengaturan Toko", icon: Settings, badge: null },
@@ -270,6 +278,8 @@
         <AdminOrders shopId={shopData.id} />
       {:else if activeTab === "settings"}
         <ShopSettings shopId={shopData.id} />
+      {:else if activeTab === "groups"}
+        <ShopGroupOrders shopId={shopData.id} />
       {:else}
         <div
           class="bg-white rounded-xl border border-gray-200 p-12 text-center"

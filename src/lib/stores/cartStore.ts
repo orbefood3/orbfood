@@ -10,34 +10,46 @@ export const cartTotal = derived(cart, ($cart) =>
     $cart.reduce((total, item) => total + ((item.final_price || item.price) * (item.quantity || 1)), 0)
 );
 
+/**
+ * Deep equality check for customizations to distinguish between variations of same item.
+ * Customizations format: Array<{ group_id, group_name, selected_items: Array<{ id, name, price, qty }> }>
+ */
 function areCustomizationsEqual(c1: any, c2: any) {
+    if (!c1 && !c2) return true;
+    if (!c1 || !c2) return false;
     return JSON.stringify(c1) === JSON.stringify(c2);
 }
 
 export function addToCart(item: any) {
     cart.update(($cart) => {
-        const existing = $cart.find((i) =>
+        // Find existing match with EXACT same customizations
+        const existingIndex = $cart.findIndex((i) =>
             i.id === item.id && areCustomizationsEqual(i.customizations, item.customizations)
         );
-        if (existing) {
-            existing.quantity = (existing.quantity || 1) + 1;
-            return [...$cart];
+
+        if (existingIndex !== -1) {
+            const updated = [...$cart];
+            updated[existingIndex] = {
+                ...updated[existingIndex],
+                quantity: (updated[existingIndex].quantity || 1) + (item.quantity || 1)
+            };
+            return updated;
         }
-        return [...$cart, { ...item, quantity: 1 }];
+
+        return [...$cart, { ...item, quantity: item.quantity || 1 }];
     });
 }
 
-export function removeFromCart(cartId: any) {
-    // Note: using index or a unique cartId might be safer, but for now we'll match on a combination
-    cart.update(($cart) => $cart.filter((item, idx) => {
-        // Here we might need a unique ID per line item to be safe
-        // Let's assume the combination of item ID and customizations is unique enough for the filter if we only remove one
-        return item.id !== cartId; // This is actually broken if we have multiples. 
-        // Let's refactor to use indices for deletions to be safe.
-    }));
+export function updateItemByIndex(index: number, updatedItem: any) {
+    cart.update(($cart) => {
+        const newCart = [...$cart];
+        if (index >= 0 && index < newCart.length) {
+            newCart[index] = { ...newCart[index], ...updatedItem };
+        }
+        return newCart;
+    });
 }
 
-// Rewriting removeFromCart and updateQuantity to use index to avoid ambiguity with customized items
 export function removeItemByIndex(index: number) {
     cart.update(($cart) => {
         return $cart.filter((_, i) => i !== index);

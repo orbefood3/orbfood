@@ -17,6 +17,7 @@
   import PrivacyPolicyPage from "./lib/pages/legal/PrivacyPolicyPage.svelte";
   import TermsOfServicePage from "./lib/pages/legal/TermsOfServicePage.svelte";
   import ToastContainer from "./lib/components/ui/ToastContainer.svelte";
+  import InstallPrompt from "./lib/components/ui/InstallPrompt.svelte";
   import "./app.css";
 
   let activeTab = "home";
@@ -97,6 +98,24 @@
           selectedArticle = data;
           activeTab = "blog";
         }
+      }
+    } else if (hash.startsWith("#/group/")) {
+      const code = hash.replace("#/group/", "");
+      const { data: room } = await supabase
+        .from("order_rooms")
+        .select("*, shops(*)")
+        .eq("short_code", code.toUpperCase())
+        .single();
+
+      if (room && room.shops) {
+        selectedStore = room.shops;
+        // The StorePage will handle the room join logic based on groupOrderStore
+        // We import the store here or just set it
+        const { groupOrderStore } = await import(
+          "./lib/stores/groupOrderStore"
+        );
+        groupOrderStore.setRoom(room);
+        window.location.hash = `#/shop/${room.shops.slug}`;
       }
     } else if (hash === "" || hash === "#/") {
       selectedStore = null;
@@ -181,6 +200,21 @@
   function handleBukaToko() {
     showBukaToko = true;
   }
+
+  let editingCartIndex: number | null = null;
+  let editingCartItem: any = null;
+
+  function handleEditCartItem(index: number, item: any) {
+    editingCartIndex = index;
+    editingCartItem = item;
+    showCart = false;
+    // StorePage already rendered if selectedStore is set
+  }
+
+  function handleCloseDetail() {
+    editingCartIndex = null;
+    editingCartItem = null;
+  }
 </script>
 
 <svelte:head>
@@ -218,7 +252,7 @@
   {:else if profile?.role === "admin"}
     <AdminDashboard />
   {:else if showCart}
-    <CartPage {user} onBack={handleCloseCart} />
+    <CartPage {user} onBack={handleCloseCart} onEditItem={handleEditCartItem} />
   {:else if showBukaToko}
     <BukaTokoPage
       {user}
@@ -227,9 +261,13 @@
     />
   {:else if selectedStore}
     <StorePage
+      {user}
       store={selectedStore}
       onBack={handleBack}
       onViewCart={handleViewCart}
+      editIndex={editingCartIndex}
+      editItem={editingCartItem}
+      onCloseEdit={handleCloseDetail}
     />
   {:else if activeTab === "blog"}
     {#if selectedArticle}
@@ -260,6 +298,7 @@
 {/if}
 
 <ToastContainer />
+<InstallPrompt />
 
 <style>
   #main-content {

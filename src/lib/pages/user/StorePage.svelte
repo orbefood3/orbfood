@@ -16,11 +16,27 @@
     Clock,
     Info,
     Share2,
+    Users,
+    Plus,
   } from "lucide-svelte";
+  import GroupOrderCard from "../../components/cards/GroupOrderCard.svelte";
+  import CreateRoomModal from "../../components/modals/CreateRoomModal.svelte";
+  import GroupOrderStickyFooter from "../../components/ui/GroupOrderStickyFooter.svelte";
+  import RoomSelectionModal from "../../components/modals/RoomSelectionModal.svelte";
+  import PaymentInfoModal from "../../components/modals/PaymentInfoModal.svelte";
+  import { groupOrderStore } from "../../stores/groupOrderStore";
+  import type {
+    OrderRoom,
+    GroupOrderParticipant,
+  } from "../../types/groupOrder";
 
   export let store: any;
   export let onBack: () => void;
   export let onViewCart: () => void;
+  export let editIndex: number | null = null;
+  export let editItem: any = null;
+  export let onCloseEdit: () => void;
+  export let user: any = null;
 
   let menuItems: any[] = [];
   let loading = true;
@@ -30,6 +46,37 @@
   let showDetailModal = false;
   let selectedMenu: any = null;
   let pendingItem: any = null;
+
+  // Group Order State
+  let activeRooms: any[] = [];
+  let showCreateRoomModal = false;
+  let showRoomSelectionModal = false;
+  let showPaymentInfoModal = false;
+  let selectedRoomForJoin: any = null;
+  let creatingRoom = false;
+  let myRoomTotal = 0;
+  let isCreator = false;
+
+  $: activeGroupOrder = $groupOrderStore;
+  $: if (activeGroupOrder && activeGroupOrder.store_id !== store?.id) {
+    // If we are in a room for another store, clear it when we visit a different store?
+    // Or warn user? For now, we assume user can only be in one context.
+    // If they manually navigated here, we might want to keep the sticky footer but
+    // maybe disable actions? Let's just keep it simple: if store mismatch, ignore active room visually
+    // or clear it if they try to interact.
+  }
+
+  // If we are in a room matching this store, load my total
+  $: if (activeGroupOrder && activeGroupOrder.store_id === store?.id && user) {
+    fetchMyRoomTotal();
+    isCreator = activeGroupOrder.creator_id === user.id;
+  }
+
+  // React to editIndex change from parent (App.svelte)
+  $: if (editIndex !== null && editItem) {
+    selectedMenu = editItem;
+    showDetailModal = true;
+  }
 
   onMount(async () => {
     if (!store?.id) return;
@@ -66,7 +113,141 @@
     } catch (e) {
       console.error("Failed to track shop view:", e);
     }
+
+    fetchActiveRooms();
   });
+
+  async function fetchActiveRooms() {
+    // Fetch open rooms for this shop
+    const now = new Date().toISOString();
+    const { data } = await supabase
+      .from("order_rooms")
+      .select("*")
+      .eq("store_id", store.id)
+      .eq("status", "open")
+      .or(`opening_time.lte.${now},opening_time.is.null`)
+      .gt("closing_time", now)
+      .order("is_shop_managed", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (data && data.length > 0) {
+      const roomIds = data.map((r: any) => r.id);
+
+      // Calculate participants manually for now
+      const { data: orders } = await supabase
+        .from("order_history")
+        .select("order_room_id")
+        .in("order_room_id", roomIds);
+
+      // Count participants per room
+      const counts: Record<string, Set<string>> = {};
+      orders?.forEach((o: any) => {
+        if (!counts[o.order_room_id]) counts[o.order_room_id] = new Set();
+        // Since we don't have user_id always (maybe), we count distinct orders or just use row count.
+        // But better to count rows if anonymous? No, users are auth'd.
+        // Let's just use raw count of orders for MVP.
+      });
+
+      activeRooms = data.map((r: any) => {
+        const roomOrders =
+          orders?.filter((o: any) => o.order_room_id === r.id) || [];
+        return {
+          ...r,
+          participant_count: roomOrders.length,
+        };
+      });
+    } else {
+      activeRooms = [];
+    }
+  }
+
+  async function fetchMyRoomTotal() {
+    if (!activeGroupOrder || !user) return;
+    const { data } = await supabase
+      .from("order_history")
+      .select("total_price")
+      .eq("order_room_id", activeGroupOrder.id)
+      .eq("user_id", user.id);
+
+    if (data) {
+      myRoomTotal = data.reduce((sum, order) => sum + order.total_price, 0);
+    }
+  }
+
+  async function handleCreateRoomSubmit(event: CustomEvent) {
+    creatingRoom = true;
+    const { name, closingTime, openingTime } = event.detail;
+
+    // Create room (payment info now comes from user profile)
+    const { data, error } = await supabase
+      .from("order_rooms")
+      .insert({
+        store_id: store.id,
+        creator_id: user?.id,
+        name: name,
+        closing_time: closingTime,
+        opening_time: openingTime || null,
+        is_shop_managed: user?.id === store.owner_id,
+        status: "open",
+      })
+      .select()
+      .single();
+
+    creatingRoom = false;
+    showCreateRoomModal = false;
+
+    if (error) {
+      const { toasts } = await import("../../stores/toastStore");
+      toasts.error("Gagal membuat room. Pastikan anda login.");
+      console.error("Room creation error:", error);
+      return;
+    }
+
+    if (data) {
+      groupOrderStore.setRoom(data);
+      fetchActiveRooms();
+      const { toasts } = await import("../../stores/toastStore");
+      toasts.success("Group Order berhasil dibuat!");
+    }
+  }
+
+  async function handleJoinRoom(room: any) {
+    // Check if already in a different room
+    if (activeGroupOrder && activeGroupOrder.id !== room.id) {
+      const { toasts } = await import("../../stores/toastStore");
+      toasts.error(
+        "Anda sudah di room lain. Keluar dulu untuk gabung room baru.",
+      );
+      return;
+    }
+
+    // Simplified: Join room immediately and let them order.
+    // They will see payment info and upload proof in the CART.
+    groupOrderStore.setRoom(room);
+    showRoomSelectionModal = false;
+    const { toasts } = await import("../../stores/toastStore");
+    toasts.success(`Berhasil gabung room ${room.name}`);
+  }
+
+  async function handlePaymentInfoProceed() {
+    if (selectedRoomForJoin) {
+      groupOrderStore.setRoom(selectedRoomForJoin);
+      showPaymentInfoModal = false;
+
+      const { toasts } = await import("../../stores/toastStore");
+      toasts.success(`Bergabung ke: ${selectedRoomForJoin.name}`);
+
+      fetchMyRoomTotal();
+      selectedRoomForJoin = null;
+    }
+  }
+
+  function handleLeaveRoom() {
+    groupOrderStore.clearRoom();
+    const { toasts } = import("../../stores/toastStore").then(({ toasts }) => {
+      toasts.info("Anda telah keluar dari room");
+    });
+  }
 
   const daysLabels: Record<string, string> = {
     monday: "Senin",
@@ -224,9 +405,15 @@
         <div
           class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/40 to-transparent"
         ></div>
+
+        <div
+          class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/40 to-transparent"
+        ></div>
       </div>
 
       <div class="px-4">
+        <!-- Group Order Section Moved to Badge & Modal -->
+
         {#if fullStoreData}
           <!-- Store Header Card -->
           <div
@@ -282,7 +469,7 @@
 
             <!-- Social & Map Links Bar -->
             <div
-              class="flex items-center gap-4 py-3 border-y border-gray-50 justify-between"
+              class="flex flex-wrap items-center gap-x-4 gap-y-3 py-3 border-y border-gray-50 justify-between"
             >
               <div class="flex items-center gap-4">
                 {#if fullStoreData.instagram_url}
@@ -326,13 +513,30 @@
                 {/if}
               </div>
 
-              <div
-                class="flex items-center gap-1.5 text-xs font-bold {fullStoreData.is_delivery_available
-                  ? 'text-blue-600'
-                  : 'text-gray-400'}"
-              >
-                <Truck class="w-4 h-4" />
-                {fullStoreData.is_delivery_available ? "Delivery" : "Takeaway"}
+              <div class="flex items-center gap-2">
+                <div
+                  class="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-black border {fullStoreData.is_delivery_available
+                    ? 'bg-blue-50 text-blue-600 border-blue-100'
+                    : 'bg-gray-50 text-gray-500 border-gray-100'}"
+                >
+                  <Truck class="w-3 h-3" />
+                  {fullStoreData.is_delivery_available
+                    ? "DELIVERY"
+                    : "TAKEAWAY"}
+                </div>
+
+                <button
+                  on:click={() => (showRoomSelectionModal = true)}
+                  class="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-black {activeRooms.length >
+                  0
+                    ? 'bg-primary/10 text-primary border-primary/20'
+                    : 'bg-gray-50 text-gray-500 border-gray-100'} border hover:bg-primary/20 transition-all active:scale-95"
+                >
+                  <Users class="w-3 h-3" />
+                  GROUP ORDER {activeRooms.length > 0
+                    ? `(${activeRooms.length})`
+                    : ""}
+                </button>
               </div>
             </div>
 
@@ -429,12 +633,64 @@
     on:confirm={confirmStoreSwitch}
   />
 
+  <RoomSelectionModal
+    show={showRoomSelectionModal}
+    rooms={activeRooms}
+    onJoin={handleJoinRoom}
+    onCreateNew={() => {
+      showRoomSelectionModal = false;
+      showCreateRoomModal = true;
+    }}
+    on:close={() => (showRoomSelectionModal = false)}
+  />
+
+  {#if showCreateRoomModal}
+    <CreateRoomModal
+      storeName={store.name}
+      isLoading={creatingRoom}
+      isShopOwner={user?.id === store.owner_id}
+      on:close={() => (showCreateRoomModal = false)}
+      on:submit={handleCreateRoomSubmit}
+    />
+  {/if}
+
+  {#if showPaymentInfoModal && selectedRoomForJoin}
+    <PaymentInfoModal
+      show={showPaymentInfoModal}
+      roomName={selectedRoomForJoin.name}
+      paymentMethod={selectedRoomForJoin.creator_payment?.payment_method}
+      qrisImageUrl={selectedRoomForJoin.creator_payment?.qris_image_url}
+      bankName={selectedRoomForJoin.creator_payment?.bank_name}
+      bankAccountNumber={selectedRoomForJoin.creator_payment
+        ?.bank_account_number}
+      bankAccountName={selectedRoomForJoin.creator_payment?.bank_account_name}
+      on:close={() => {
+        showPaymentInfoModal = false;
+        selectedRoomForJoin = null;
+      }}
+      on:proceed={handlePaymentInfoProceed}
+    />
+  {/if}
+
+  {#if activeGroupOrder && activeGroupOrder.store_id === store.id}
+    <GroupOrderStickyFooter
+      room={activeGroupOrder}
+      myTotal={myRoomTotal}
+      {isCreator}
+      onOpenCart={onViewCart}
+    />
+  {/if}
+
   {#if selectedMenu}
     <MenuDetailModal
       show={showDetailModal}
       item={selectedMenu}
+      {editIndex}
       onAdd={handleAddToCart}
-      on:close={() => (showDetailModal = false)}
+      on:close={() => {
+        showDetailModal = false;
+        if (editIndex !== null) onCloseEdit();
+      }}
     />
   {/if}
 </div>

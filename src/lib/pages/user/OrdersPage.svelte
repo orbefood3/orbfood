@@ -37,7 +37,9 @@
     // Fetch orders joined with shop names, optimized select
     const { data, error } = await supabase
       .from("order_history")
-      .select("id, user_id, status, total_price, created_at, shops(name)")
+      .select(
+        "id, user_id, status, total_price, created_at, order_room_id, shops(name)",
+      )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .range(from, to);
@@ -72,6 +74,59 @@
       provider: "google",
       options: { redirectTo: getAuthRedirectUrl() },
     });
+  }
+
+  async function handleCopyDraft(roomId: string, shopName: string) {
+    try {
+      // 1. Fetch all participants for this room
+      const { data: participants, error } = await supabase
+        .from("order_history")
+        .select("participant_name, total_price, items, payment_status")
+        .eq("order_room_id", roomId);
+
+      if (error || !participants)
+        throw error || new Error("Data tidak ditemukan");
+
+      // 2. Generate Draft (Same logic as Summary Modal)
+      const header = `*ORDER GROUP - ${shopName.toUpperCase()}*\n_(Salinan Cadangan)_\n\n`;
+      let itemsText = "";
+      let total = 0;
+      let aggregatedItems: any = {};
+
+      participants.forEach((p) => {
+        if (p.payment_status === "verified") {
+          total += p.total_price;
+          const items = Array.isArray(p.items) ? p.items : [];
+          items.forEach((item: any) => {
+            const key = item.name + (item.variant ? ` (${item.variant})` : "");
+            if (!aggregatedItems[key]) {
+              aggregatedItems[key] = { qty: 0, name: key };
+            }
+            aggregatedItems[key].qty += item.qty;
+          });
+        }
+      });
+
+      Object.values(aggregatedItems).forEach((item: any) => {
+        itemsText += `- ${item.name} x${item.qty}\n`;
+      });
+
+      const footer = `\n*Total Terverifikasi: Rp ${total.toLocaleString("id-ID")}*\n\n`;
+      let userDetails = "*Rincian:* \n";
+      participants.forEach((p) => {
+        const icon = p.payment_status === "verified" ? "✅" : "⏳";
+        userDetails += `${icon} ${p.participant_name}: Rp ${p.total_price.toLocaleString()}\n`;
+      });
+
+      const fullText = header + itemsText + footer + userDetails;
+
+      // 3. Copy to Clipboard
+      await navigator.clipboard.writeText(fullText);
+      alert("Draft pesanan berhasil disalin ke clipboard!");
+    } catch (err) {
+      console.error("Failed to copy draft:", err);
+      alert("Gagal menyalin draft.");
+    }
   }
 
   function handleTouch() {
@@ -169,6 +224,18 @@
                   >Rp {order.total_price.toLocaleString()}</span
                 >
                 <div class="order-actions">
+                  {#if order.order_room_id}
+                    <button
+                      class="action-btn bg-green-50 text-green-600 border border-green-200"
+                      on:click={() =>
+                        handleCopyDraft(
+                          order.order_room_id,
+                          order.shops?.name || "Toko",
+                        )}
+                    >
+                      Salin Draft
+                    </button>
+                  {/if}
                   <button class="action-btn text-muted">Detail</button>
                   <button class="action-btn bg-accent">Pesan Lagi</button>
                 </div>
