@@ -47,11 +47,11 @@
     <div class="flex items-center justify-between max-w-md mx-auto">
         <div class="flex flex-col">
             <span class="text-xs text-gray-500 font-medium"
-                >Group Order: {room.name}</span
+                >Grup: {room.name}</span
             >
             <div class="flex items-center gap-2 mt-0.5">
                 <span
-                    class="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-xs font-bold flex items-center gap-1"
+                    class="bg-accent/10 text-accent px-1.5 py-0.5 rounded text-xs font-bold flex items-center gap-1"
                 >
                     <Clock size={10} />
                     {timeLeft}
@@ -65,7 +65,7 @@
         </div>
 
         <button
-            class="bg-gray-900 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-black transition-colors flex items-center gap-2 shadow-lg"
+            class="bg-accent text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-accent/90 transition-colors flex items-center gap-2 shadow-lg"
             on:click={onOpenCart}
         >
             <ShoppingBag size={16} />

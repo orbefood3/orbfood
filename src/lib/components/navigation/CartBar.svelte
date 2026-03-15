@@ -13,9 +13,12 @@
     <div class="cart-summary bg-primary">
       <div class="cart-info">
         <span class="cart-icon">🛒</span>
-        <span class="cart-text"
-          >{$cartCount} Item | Rp {$cartTotal.toLocaleString()}</span
-        >
+        <div class="cart-meta">
+          <span class="cart-label">Keranjang Aktif</span>
+          <span class="cart-text"
+            >{$cartCount} Item • Rp {$cartTotal.toLocaleString()}</span
+          >
+        </div>
       </div>
       <button class="view-cart-btn" on:click={onViewCart}>
         Lihat Keranjang
@@ -26,7 +29,7 @@
 
 <style>
   .cart-bar {
-    padding: 12px 16px;
+    padding: 10px 12px;
     background: transparent;
     pointer-events: none;
     margin-bottom: calc(env(safe-area-inset-bottom, 0px));
@@ -37,26 +40,53 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 16px;
-    border-radius: 12px;
+    padding: 12px 12px;
+    border-radius: 16px;
     color: white;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 14px 24px -16px rgba(15, 42, 68, 0.9),
+      0 8px 20px -16px rgba(15, 42, 68, 0.8);
   }
 
   .cart-info {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+  }
+
+  .cart-icon {
+    font-size: 18px;
+  }
+
+  .cart-meta {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+  }
+
+  .cart-label {
+    font-size: 10px;
+    font-weight: 700;
+    opacity: 0.8;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
   }
 
   .cart-text {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 800;
   }
 
   .view-cart-btn {
-    background: none;
+    background: var(--accent);
     color: white;
-    font-weight: 700;
-    font-size: 14px;
+    font-weight: 800;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 9px 12px;
+    border-radius: 11px;
+    box-shadow: 0 10px 16px -12px rgba(249, 115, 22, 0.9);
   }
 </style>

@@ -14,7 +14,6 @@
         ChevronLeft,
         ChevronRight,
         Trash2,
-        Shield,
     } from "lucide-svelte";
 
     let users: any[] = [];
@@ -70,8 +69,6 @@
         }
         loading = false;
     }
-
-    onMount(fetchUsers);
 
     function handleSearchInput() {
         clearTimeout(searchTimeout);
@@ -145,7 +142,9 @@
     <!-- Reusing PageWrapper for consistency if desired, or simple div -->
     <div class="space-y-6">
         <!-- Header & Search -->
-        <div class="flex justify-between items-center mb-6">
+        <div
+            class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6"
+        >
             <div>
                 <h2
                     class="text-2xl font-bold text-gray-900 flex items-center gap-2"
@@ -159,7 +158,7 @@
 
             <div class="flex items-center gap-4">
                 <div
-                    class="relative w-64 bg-white rounded-lg border border-gray-200 flex items-center px-3 py-2"
+                    class="relative w-full md:w-64 bg-white rounded-xl border border-gray-200 flex items-center px-3 py-2"
                 >
                     <Search size={18} class="text-gray-400 mr-2" />
                     <input
@@ -189,7 +188,7 @@
             />
         {:else}
             <div
-                class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm"
+                class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm"
             >
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
@@ -333,7 +332,7 @@
 
             <!-- Pagination Controls -->
             <div
-                class="mt-6 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50/50 p-4 rounded-xl border border-gray-100"
+                class="mt-6 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50/70 p-4 rounded-2xl border border-gray-100"
             >
                 <div class="text-sm text-gray-500">
                     Menampilkan <span class="font-semibold text-gray-900"

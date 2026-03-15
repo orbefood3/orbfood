@@ -113,7 +113,7 @@
     }
 
     function generateWhatsAppText() {
-        const header = `*ORDER GRUP - ${shopName.toUpperCase()}*\nRoom: ${room.name}\n${showOnlyVerified ? "_[Hanya Pesanan Terverifikasi]_" : ""}\n\n`;
+        const header = `*ORDER GRUP - ${shopName.toUpperCase()}*\n📦 Grup: ${room.name} (#${room.short_code})\n${showOnlyVerified ? "_[Hanya Pesanan Terverifikasi]_" : ""}\n\n`;
 
         let itemsText = "*DAFTAR PESANAN KOLEKTIF:*\n";
         Object.values(aggregatedItems).forEach((item) => {
@@ -208,26 +208,46 @@
             }
 
             // 2. Database Updates (Status & Nullify URLs)
-            await supabase
-                .from("order_rooms")
-                .update({ status: "sent" })
-                .eq("id", room.id);
+            if (room.schedule_type === "recurring") {
+                // If recurring, we don't close the room. We just "archive" the current verified orders
+                // so the room stays open for the next scheduled day.
+                await supabase
+                    .from("order_history")
+                    .update({ is_archived: true, transfer_proof_url: null })
+                    .eq("order_room_id", room.id);
+            } else {
+                // For one-time or old groups, close the room as usual
+                await supabase
+                    .from("order_rooms")
+                    .update({ status: "sent" })
+                    .eq("id", room.id);
 
-            await supabase
-                .from("order_history")
-                .update({ transfer_proof_url: null })
-                .eq("order_room_id", room.id);
+                await supabase
+                    .from("order_history")
+                    .update({ transfer_proof_url: null })
+                    .eq("order_room_id", room.id);
+            }
 
-            // 3. Open WhatsApp
-            const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-            window.open(url, "_blank");
+            // 3. Open WhatsApp ONLY if it's NOT a shop-managed group
+            if (!room.is_shop_managed) {
+                const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                window.open(url, "_blank");
+            } else {
+                // For shop managed, just show a success message since they already have the data
+                const { toasts } = await import("../../stores/toastStore");
+                toasts.success("Pesanan grup berhasil diproses!");
+            }
 
             dispatch("close");
         } catch (err) {
             console.error("Automated cleanup failed:", err);
-            // Even if cleanup fails, we open WA so the business isn't blocked
-            const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-            window.open(url, "_blank");
+            // Fallback: Even if cleanup fails, try to open WA for regular users
+            if (!room.is_shop_managed) {
+                const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                window.open(url, "_blank");
+            } else {
+                alert("Gagal memproses pesanan grup.");
+            }
             dispatch("close");
         } finally {
             isCleaningUp = false;
@@ -246,7 +266,7 @@
         >
             <div>
                 <h2 class="text-lg font-bold text-gray-800">
-                    Rekap Group Order
+                    Rekap Grup: {room.short_code}
                 </h2>
                 <p class="text-xs text-gray-500">
                     {room.name} • {participants.length} Peserta • {participants.filter(
@@ -365,119 +385,130 @@
                     Rincian Peserta
                 </h3>
 
-                <div class="space-y-3">
+                <div class="space-y-4">
                     {#each participants as p}
                         <div
-                            class="bg-gray-50 p-3 rounded-lg flex justify-between items-start"
+                            class="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow"
                         >
-                            <div>
-                                <p
-                                    class="font-bold text-sm text-gray-900 flex items-center gap-1.5"
-                                >
-                                    {p.participant_name}
-                                    {#if p.user_id === room.creator_id}
-                                        <span
-                                            class="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-black uppercase"
-                                            >Kamu</span
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <div
+                                        class="font-black text-sm text-gray-900 flex items-center gap-2"
+                                    >
+                                        <div
+                                            class="w-8 h-8 bg-primary/5 rounded-full flex items-center justify-center text-primary"
                                         >
-                                    {/if}
-                                </p>
-                                <div class="text-xs text-gray-500 mt-1">
-                                    {#each p.items as item}
-                                        <span>{item.qty}x {item.name}, </span>
-                                    {/each}
+                                            <User size={16} />
+                                        </div>
+                                        {p.participant_name}
+                                        {#if p.user_id === room.creator_id}
+                                            <span
+                                                class="text-[9px] bg-primary text-white px-2 py-0.5 rounded-full font-black uppercase tracking-widest"
+                                                >PEMBUAT</span
+                                            >
+                                        {/if}
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="flex flex-col items-end gap-2">
                                 <span
-                                    class="font-mono font-bold text-sm text-gray-700"
+                                    class="font-mono font-black text-sm text-gray-900 bg-gray-50 px-3 py-1 rounded-lg"
                                 >
                                     Rp {p.total_price.toLocaleString("id-ID")}
                                 </span>
+                            </div>
 
-                                <div class="flex flex-col items-end gap-1.5">
+                            <div class="ml-10 space-y-3">
+                                <!-- Structured Item List -->
+                                <div
+                                    class="bg-gray-50/50 rounded-xl p-3 border border-gray-50"
+                                >
+                                    <p
+                                        class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2"
+                                    >
+                                        Daftar Menu:
+                                    </p>
+                                    <div class="space-y-1.5">
+                                        {#each p.items as item}
+                                            <div
+                                                class="flex items-center gap-2 text-xs text-gray-700"
+                                            >
+                                                <div
+                                                    class="w-1 h-1 bg-gray-300 rounded-full"
+                                                ></div>
+                                                <span class="font-bold"
+                                                    >{item.qty}x</span
+                                                >
+                                                <span class="flex-1"
+                                                    >{item.name}</span
+                                                >
+                                            </div>
+                                        {/each}
+                                    </div>
+                                </div>
+
+                                <!-- Payment Status & Actions -->
+                                <div
+                                    class="flex items-center justify-between pt-1"
+                                >
                                     {#if p.payment_status === "verified"}
                                         <span
-                                            class="text-[9px] font-black bg-green-100 text-green-600 px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1"
+                                            class="text-[10px] font-black bg-green-500 text-white px-2.5 py-1 rounded-lg uppercase tracking-wider flex items-center gap-1.5 shadow-sm shadow-green-100"
                                         >
-                                            <ShieldCheck size={10} />
-                                            LUNAS & VERIFIED
+                                            <ShieldCheck size={12} />
+                                            TERVERIFIKASI
                                         </span>
                                     {:else if p.transfer_proof_url}
-                                        <div
-                                            class="flex flex-col items-end gap-1"
-                                        >
-                                            <div
-                                                class="flex items-center gap-1"
-                                            >
-                                                <span
-                                                    class="text-[9px] font-black bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1"
-                                                >
-                                                    <Clock size={10} />
-                                                    MENUNGGU VERIFIKASI
-                                                </span>
-                                                {#if p.user_id === currentUserId || isCreator}
-                                                    <button
-                                                        on:click={() =>
-                                                            handleDeleteOrder(
-                                                                p.id,
-                                                                p.user_id,
-                                                            )}
-                                                        class="text-[9px] font-bold bg-white border border-red-200 text-red-500 hover:bg-red-50 px-1.5 py-0.5 rounded shadow-sm transition-all flex items-center gap-1"
-                                                    >
-                                                        <Trash2 size={10} />
-                                                        HAPUS
-                                                    </button>
-                                                {/if}
-                                            </div>
-                                            <div
-                                                class="flex items-center gap-1"
-                                            >
-                                                <a
-                                                    href={p.transfer_proof_url}
-                                                    target="_blank"
-                                                    class="text-[9px] font-bold text-blue-500 hover:text-blue-700 flex items-center gap-1 bg-white border border-blue-100 px-1.5 py-0.5 rounded shadow-sm transition-all"
-                                                >
-                                                    <Eye size={10} />
-                                                    Cek TF
-                                                </a>
-                                                {#if isCreator}
-                                                    <button
-                                                        on:click={() =>
-                                                            handleVerify(p.id)}
-                                                        class="text-[9px] font-bold bg-green-600 text-white hover:bg-green-700 px-1.5 py-0.5 rounded shadow-sm transition-all flex items-center gap-1"
-                                                    >
-                                                        <CheckCircle2
-                                                            size={10}
-                                                        />
-                                                        VERIFIKASI
-                                                    </button>
-                                                {/if}
-                                            </div>
-                                        </div>
-                                    {:else}
-                                        <div class="flex items-center gap-1">
+                                        <div class="flex items-center gap-2">
                                             <span
-                                                class="text-[9px] font-black bg-red-100 text-red-600 px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1"
+                                                class="text-[10px] font-black bg-blue-100 text-blue-600 px-2.5 py-1 rounded-lg uppercase tracking-wider flex items-center gap-1.5"
                                             >
-                                                <AlertCircle size={10} />
-                                                PENDING TF
+                                                <Clock size={12} />
+                                                MENUNGGU
                                             </span>
-                                            {#if p.user_id === currentUserId || isCreator}
+                                            {#if isCreator}
                                                 <button
                                                     on:click={() =>
-                                                        handleDeleteOrder(
-                                                            p.id,
-                                                            p.user_id,
-                                                        )}
-                                                    class="text-[9px] font-bold bg-white border border-red-200 text-red-500 hover:bg-red-50 px-1.5 py-0.5 rounded shadow-sm transition-all flex items-center gap-1"
+                                                        handleVerify(p.id)}
+                                                    class="text-[10px] font-black bg-green-600 text-white hover:bg-green-700 px-3 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
                                                 >
-                                                    <Trash2 size={10} />
-                                                    HAPUS
+                                                    <CheckCircle2 size={12} />
+                                                    VERIFIKASI
                                                 </button>
                                             {/if}
                                         </div>
+                                    {:else}
+                                        <span
+                                            class="text-[10px] font-black bg-red-100 text-red-600 px-2.5 py-1 rounded-lg uppercase tracking-wider flex items-center gap-1.5"
+                                        >
+                                            <AlertCircle size={12} />
+                                            BELUM BAYAR
+                                        </span>
                                     {/if}
+
+                                    <div class="flex items-center gap-2">
+                                        {#if p.transfer_proof_url}
+                                            <a
+                                                href={p.transfer_proof_url}
+                                                target="_blank"
+                                                class="h-9 px-4 bg-primary text-white text-[11px] font-black rounded-xl flex items-center gap-2 hover:bg-primary/90 transition-all shadow-md shadow-primary/10"
+                                            >
+                                                <Eye size={14} />
+                                                CEK BUKTI TF
+                                            </a>
+                                        {/if}
+
+                                        {#if p.user_id === currentUserId || isCreator}
+                                            <button
+                                                on:click={() =>
+                                                    handleDeleteOrder(
+                                                        p.id,
+                                                        p.user_id,
+                                                    )}
+                                                class="w-9 h-9 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 transition-colors"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        {/if}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -511,7 +542,7 @@
                         {:else}
                             <MessageCircle size={18} />
                             {room.is_shop_managed
-                                ? "Selesaikan & Salin"
+                                ? "Selesaikan"
                                 : "Kirim ke WhatsApp Toko"}
                         {/if}
                     </button>
@@ -535,7 +566,7 @@
                 </div>
                 <p class="text-[11px] text-blue-600 leading-relaxed">
                     Detail pesanan dan bukti transfermu sudah masuk ke rekap
-                    ketua room. Pantau terus status "LUNAS" kamu di sini ya!
+                    ketua grup. Pantau terus status "LUNAS" kamu di sini ya!
                 </p>
             </div>
         {/if}

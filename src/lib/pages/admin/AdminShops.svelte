@@ -11,6 +11,7 @@
     Power,
     Trash2,
     Search,
+    Store,
     ChevronLeft,
     ChevronRight,
     X,
@@ -125,19 +126,29 @@
 </script>
 
 <PageWrapper>
-  <!-- Search Bar -->
-  <div class="mb-6 flex justify-between items-center">
-    <div
-      class="relative w-full md:w-96 bg-white rounded-lg border border-gray-200 flex items-center px-3 py-2"
-    >
-      <Search size={18} class="text-gray-400 mr-2" />
-      <input
-        type="text"
-        bind:value={searchQuery}
-        on:input={handleSearchInput}
-        placeholder="Cari toko..."
-        class="w-full bg-transparent outline-none text-sm"
-      />
+  <div class="space-y-6">
+    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <Store class="text-primary" size={22} />
+          Manajemen Semua Toko
+        </h2>
+        <p class="text-gray-500 text-sm">
+          Kelola status aktif, detail, dan penghapusan toko terverifikasi.
+        </p>
+      </div>
+      <div
+        class="relative w-full md:w-96 bg-white rounded-xl border border-gray-200 flex items-center px-3 py-2"
+      >
+        <Search size={18} class="text-gray-400 mr-2" />
+        <input
+          type="text"
+          bind:value={searchQuery}
+          on:input={handleSearchInput}
+          placeholder="Cari toko..."
+          class="w-full bg-transparent outline-none text-sm"
+        />
+      </div>
     </div>
 
     <div class="text-sm text-gray-500">
@@ -158,7 +169,7 @@
     />
   {:else}
     <div
-      class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden overflow-x-auto"
+      class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden overflow-x-auto"
     >
       <table class="w-full text-left border-collapse min-w-[800px]">
         <thead class="bg-gray-50/50 border-b border-gray-100">
@@ -254,7 +265,7 @@
 
     <!-- Pagination Controls -->
     <div
-      class="mt-6 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50/50 p-4 rounded-xl border border-gray-100"
+      class="mt-6 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50/70 p-4 rounded-2xl border border-gray-100"
     >
       <div class="text-sm text-gray-500">
         Menampilkan <span class="font-semibold text-gray-900"
@@ -292,7 +303,7 @@
       </div>
     </div>
   {/if}
-
+</PageWrapper>
   <!-- Detail Modal Side Panel -->
   {#if showDetailModal && selectedShop}
     <div class="fixed inset-0 z-50 flex justify-end">
@@ -375,7 +386,6 @@
       </div>
     </div>
   {/if}
-</PageWrapper>
 
 <style>
   /* Custom scrollbar for modal */

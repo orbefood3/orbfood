@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { supabase, getAuthRedirectUrl } from "../../services/supabase";
+  import { ArrowRight } from "lucide-svelte";
+  import { groupOrderStore } from "../../stores/groupOrderStore";
   export let user: any = null;
 
   let activeTab = "Semua";
@@ -9,6 +11,12 @@
   let orders: any[] = [];
   let loading = true;
   let agreed = false;
+
+  $: activeGroupOrder = $groupOrderStore;
+  $: isExpired =
+    activeGroupOrder &&
+    activeGroupOrder.closing_time &&
+    new Date(activeGroupOrder.closing_time) < new Date();
 
   // Pagination
   let page = 0;
@@ -189,6 +197,54 @@
       </section>
 
       <div class="order-list">
+        {#if activeGroupOrder}
+          <div
+            class="{isExpired
+              ? 'bg-red-50 border-red-200'
+              : 'bg-primary/5 border-primary/20'} border-2 p-5 rounded-2xl mb-6 shadow-sm animate-in fade-in slide-in-from-top duration-300"
+          >
+            <div class="flex justify-between items-start mb-4">
+              <div>
+                <span
+                  class="text-[10px] font-black {isExpired
+                    ? 'bg-red-100 text-red-600'
+                    : 'bg-primary/10 text-primary'} px-2 py-0.5 rounded-lg uppercase tracking-widest"
+                  >{isExpired ? "Grup Berakhir" : "Grup Berlangsung"}</span
+                >
+                <h3 class="text-lg font-black text-gray-900 mt-1">
+                  {activeGroupOrder.name}
+                </h3>
+                <p class="text-xs font-mono text-gray-400">
+                  Kode: #{activeGroupOrder.short_code}
+                </p>
+              </div>
+              <button
+                on:click={() =>
+                  (window.location.hash = `#/shop/${activeGroupOrder.shops?.slug}`)}
+                class="w-10 h-10 bg-white border border-gray-100 rounded-xl flex items-center justify-center text-primary shadow-sm"
+              >
+                <ArrowRight size={20} />
+              </button>
+            </div>
+            <div class="flex items-center gap-3">
+              <button
+                on:click={() => (window.location.hash = `#/cart`)}
+                class="flex-1 py-3 bg-primary text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/10"
+              >
+                Lihat Detail Grup
+              </button>
+              {#if isExpired}
+                <button
+                  on:click={() => groupOrderStore.clearGroup()}
+                  class="px-4 py-3 bg-white border border-red-100 text-red-500 rounded-xl font-black text-xs uppercase tracking-widest shadow-sm"
+                >
+                  Hapus
+                </button>
+              {/if}
+            </div>
+          </div>
+        {/if}
+
         {#if loading}
           {#each Array(3) as _}
             <div class="h-24 bg-gray-100 rounded-lg animate-pulse mb-3"></div>
@@ -226,7 +282,7 @@
                 <div class="order-actions">
                   {#if order.order_room_id}
                     <button
-                      class="action-btn bg-green-50 text-green-600 border border-green-200"
+                      class="action-btn action-soft"
                       on:click={() =>
                         handleCopyDraft(
                           order.order_room_id,
@@ -236,8 +292,8 @@
                       Salin Draft
                     </button>
                   {/if}
-                  <button class="action-btn text-muted">Detail</button>
-                  <button class="action-btn bg-accent">Pesan Lagi</button>
+                  <button class="action-btn action-ghost">Detail</button>
+                  <button class="action-btn action-main">Pesan Lagi</button>
                 </div>
               </div>
             </div>
@@ -272,9 +328,11 @@
   }
 
   .header {
-    padding: 16px;
+    padding: 14px 16px;
     color: white;
     text-align: center;
+    border-radius: 0 0 18px 18px;
+    box-shadow: 0 14px 26px -24px rgba(15, 42, 68, 0.9);
   }
 
   .header h1 {
@@ -283,10 +341,11 @@
   }
 
   .content {
-    padding: 16px;
+    padding: 14px;
     display: flex;
     flex-direction: column;
     flex: 1;
+    background: var(--bg-soft);
   }
 
   /* Empty State */
@@ -376,7 +435,10 @@
     gap: 8px;
     overflow-x: auto;
     margin-bottom: 20px;
-    padding-bottom: 4px;
+    padding: 4px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
   }
 
   .tabs-scroll::-webkit-scrollbar {
@@ -385,17 +447,18 @@
 
   .tab-chip {
     white-space: nowrap;
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 600;
-    background: var(--bg-soft);
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    background: transparent;
     color: var(--text-muted);
   }
 
   .tab-chip.active {
     background: var(--primary);
     color: white;
+    box-shadow: 0 8px 14px -10px rgba(15, 42, 68, 0.8);
   }
 
   .order-list {
@@ -407,7 +470,9 @@
   .order-card {
     background: white;
     padding: 16px;
-    border: 1px solid var(--bg-soft);
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 12px 20px -24px rgba(15, 42, 68, 0.7);
     cursor: pointer;
   }
 
@@ -452,16 +517,33 @@
   .order-actions {
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   .action-btn {
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
+    padding: 7px 11px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    border: 1px solid transparent;
   }
 
-  .action-btn.bg-accent {
+  .action-main {
+    background: var(--accent);
     color: white;
+    border-color: var(--accent);
+  }
+
+  .action-soft {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+  }
+
+  .action-ghost {
+    background: white;
+    color: var(--text-muted);
+    border-color: #cbd5e1;
   }
 </style>

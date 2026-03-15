@@ -2,7 +2,7 @@
   import { supabase } from "../../services/supabase";
   import { onMount } from "svelte";
   import { fade, slide } from "svelte/transition";
-  import logo from "../../../assets/logo-orb.png";
+  
   import {
     BarChart3,
     Store,
@@ -141,7 +141,7 @@
     class="w-full h-full flex items-center justify-center bg-white rounded-full overflow-hidden p-0 shadow-inner"
   >
     <img
-      src={logo}
+      src="/logo-orb.png"
       alt="OrbFood Logo"
       class="w-full h-full object-cover scale-150"
     />

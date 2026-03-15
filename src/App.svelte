@@ -112,7 +112,7 @@
       if (room && room.shops) {
         selectedStore = room.shops;
         // The StorePage will handle the room join logic based on groupOrderStore
-        groupOrderStore.setRoom(room);
+        groupOrderStore.setGroup(room);
         window.location.hash = `#/shop/${room.shops.slug}`;
       }
     } else if (hash === "" || hash === "#/") {

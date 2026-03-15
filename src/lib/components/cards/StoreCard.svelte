@@ -52,7 +52,7 @@
       <div class="flex items-center gap-1.5 ml-auto">
         {#if store.is_delivery_available}
           <div
-            class="flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md text-[10px] font-black border border-blue-100"
+            class="flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-md text-[10px] font-black border border-primary/20"
           >
             <Truck size={10} />
             DELIVERY
@@ -71,7 +71,7 @@
         >📍 {store.villages.name}</span
       >
     {/if}
-    <button class="view-menu-btn bg-primary text-white">Lihat Menu</button>
+    <button class="view-menu-btn bg-accent text-white">Lihat Menu</button>
   </div>
 </div>
 

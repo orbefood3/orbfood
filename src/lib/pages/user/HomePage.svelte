@@ -6,7 +6,7 @@
   import PortraitMenuCard from "../../components/cards/PortraitMenuCard.svelte";
   import MenuCard from "../../components/cards/MenuCard.svelte";
   import { MapPin, Search, ChevronDown, Check, X, Truck } from "lucide-svelte";
-  import logo from "../../../assets/logo-orb.png";
+  
 
   export let onStoreSelect: (store: any) => void;
 
@@ -325,50 +325,36 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div class="home-page" on:touchstart|stopPropagation={handleTouch}>
   <header
-    class="header-sticky sticky top-0 z-40 bg-primary px-4 pt-4 pb-4 shadow-sm"
+    class="header-sticky sticky top-0 z-40 px-3 py-2"
   >
-    <div class="flex flex-col gap-4">
-      <!-- Top Bar: Logo & Location -->
-      <div class="flex items-center justify-between gap-4">
-        <div class="flex items-center gap-2">
-          <div
-            class="w-10 h-10 bg-white rounded-full p-0 shadow-sm overflow-hidden flex items-center justify-center"
-          >
-            <img
-              src={logo}
-              alt="OrbFood"
-              class="w-full h-full object-cover scale-150"
-            />
-          </div>
-          <div class="flex flex-col">
-            <span
-              class="text-white text-base font-black leading-none uppercase tracking-tight"
-              >OrbFood</span
-            >
-          </div>
-        </div>
-
-        <!-- Village Filter -->
-        <button
-          on:click={() => (showVillageModal = true)}
-          class="flex items-center gap-2 bg-white/10 text-white px-3 py-2 rounded-xl text-[10px] font-bold transition-all active:scale-95 text-left border border-white/5 max-w-[150px]"
+    <div
+      class="bg-[rgba(250,250,248,0.93)] backdrop-blur-[20px] border border-[#eceae6] rounded-2xl px-2.5 py-2 flex items-center gap-2 shadow-sm"
+    >
+      <div class="flex items-center gap-1.5 flex-shrink-0 pl-1">
+        <div
+          class="w-7 h-7 rounded-full overflow-hidden bg-white border border-[#eceae6]"
         >
-          <MapPin size={14} />
-          <span class="flex-1 truncate">{selectedVillageName}</span>
-          <ChevronDown size={12} class="opacity-60" />
-        </button>
+          <img
+            src="/logo-orb.png"
+            alt="OrbFood"
+            class="w-full h-full object-cover scale-150"
+          />
+        </div>
+        <span class="text-[15px] font-black text-primary tracking-tight"
+          >OrbFood</span
+        >
       </div>
 
       <!-- Search Bar -->
-      <div class="relative">
-        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-          <Search size={18} />
+      <div class="relative flex-1 min-w-0">
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10">
+          <Search size={14} />
         </span>
         <input
           type="text"
           bind:value={searchQuery}
-          placeholder="Cari toko atau makanan..."
-          class="w-full pl-12 pr-12 py-3 rounded-2xl bg-white border-none text-gray-900 text-sm outline-none shadow-sm font-medium"
+          placeholder="Cari makanan atau toko..."
+          class="w-full pl-9 pr-10 h-9 rounded-full bg-[#eceae6] border border-transparent focus:border-accent/50 text-gray-900 text-[13px] outline-none font-medium transition-all"
         />
 
         <!-- Smart Delivery Toggle -->
@@ -377,14 +363,23 @@
             filterDeliveryOnly = !filterDeliveryOnly;
             fetchNextPage(true);
           }}
-          class="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-xl transition-all duration-300 {filterDeliveryOnly
-            ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-            : 'text-gray-300 hover:text-gray-400'}"
+          class="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full grid place-items-center transition-all duration-300 {filterDeliveryOnly
+            ? 'bg-accent text-white shadow-md shadow-accent/30'
+            : 'text-gray-400 hover:text-gray-500'}"
           title={filterDeliveryOnly ? "Tampilkan semua" : "Hanya Delivery"}
         >
-          <Truck size={20} strokeWidth={filterDeliveryOnly ? 3 : 2} />
+          <Truck size={15} strokeWidth={filterDeliveryOnly ? 3 : 2} />
         </button>
       </div>
+
+      <!-- Location Filter (replace cart position) -->
+      <button
+        on:click={() => (showVillageModal = true)}
+        class="w-9 h-9 rounded-full bg-[#fff7ed] border border-[#fed7aa] grid place-items-center text-accent transition-all active:scale-95 flex-shrink-0"
+        title={`Lokasi: ${selectedVillageName}`}
+      >
+        <MapPin size={15} />
+      </button>
     </div>
   </header>
 
@@ -475,7 +470,7 @@
           <div class="py-6 flex justify-center">
             <button
               on:click={() => fetchNextPage()}
-              class="group flex items-center gap-2 px-8 py-3 bg-white border-2 border-primary/10 rounded-2xl text-primary font-black text-sm hover:bg-primary hover:text-white hover:border-primary transition-all shadow-sm active:scale-95"
+              class="group flex items-center gap-2 px-8 py-3 bg-accent border-2 border-accent rounded-2xl text-white font-black text-sm hover:bg-accent/90 transition-all shadow-sm active:scale-95"
             >
               <span>Lihat Menu Lainnya</span>
               <span class="group-hover:translate-y-1 transition-transform"

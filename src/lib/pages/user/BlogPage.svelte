@@ -122,14 +122,14 @@
   on:touchstart|stopPropagation={handleTouch}
 >
   <!-- Header Section -->
-  <header class="bg-white border-b border-gray-100 sticky top-0 z-30 px-4 py-4">
+  <header class="bg-primary sticky top-0 z-30 px-4 pt-4 pb-5 shadow-soft rounded-b-3xl">
     <div class="max-w-2xl mx-auto space-y-4">
       <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-black text-gray-900 tracking-tight">
-          OrbFood <span class="text-primary">Blog</span>
+        <h1 class="text-2xl font-black text-white tracking-tight">
+          OrbFood <span class="text-accent">Blog</span>
         </h1>
         <div
-          class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary"
+          class="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white"
         >
           <User size={20} />
         </div>
@@ -145,7 +145,7 @@
           type="text"
           bind:value={searchQuery}
           placeholder="Cari artikel menarik..."
-          class="w-full bg-gray-100 border-none rounded-2xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary transition-all outline-none"
+          class="w-full bg-white border-none rounded-2xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-accent transition-all outline-none"
         />
       </div>
     </div>
@@ -153,7 +153,7 @@
 
   <!-- Categories Section -->
   <div
-    class="bg-white border-b border-gray-100 overflow-x-auto no-scrollbar py-3"
+    class="bg-transparent overflow-x-auto no-scrollbar py-3 mt-2"
   >
     <div class="flex gap-2 px-4 max-w-2xl mx-auto">
       {#each categories as cat}
@@ -161,8 +161,8 @@
           on:click={() => (selectedCategory = cat.value)}
           class="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all border
           {selectedCategory === cat.value
-            ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105'
-            : 'bg-white border-gray-100 text-gray-600 hover:border-primary/50'}"
+            ? 'bg-accent border-accent text-white shadow-lg shadow-accent/30 scale-105'
+            : 'bg-white border-slate-200 text-slate-600 hover:border-primary/40'}"
         >
           <span>{cat.icon}</span>
           {cat.label}
@@ -224,7 +224,7 @@
             ></div>
             <div class="absolute bottom-6 left-6 right-6 text-white space-y-2">
               <span
-                class="bg-primary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
+                class="bg-accent px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
               >
                 Terpopuler
               </span>
@@ -296,7 +296,7 @@
       {#if hasMore && searchQuery === "" && selectedCategory === "all"}
         <div class="flex justify-center mt-8">
           <button
-            class="bg-white border border-gray-200 text-gray-600 font-bold py-3 px-6 rounded-2xl shadow-sm hover:bg-gray-50 active:scale-95 transition-all text-sm flex items-center gap-2"
+            class="bg-accent border border-accent text-white font-bold py-3 px-6 rounded-2xl shadow-sm hover:bg-accent/90 active:scale-95 transition-all text-sm flex items-center gap-2"
             on:click={() => fetchArticles()}
             disabled={loadingMore}
           >

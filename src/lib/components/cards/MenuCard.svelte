@@ -62,7 +62,7 @@
     padding: 16px;
     background: white;
     gap: 16px;
-    border: none; /* Removed border as requested */
+    border: 1px solid var(--bg-soft);
     box-shadow:
       0 4px 6px -1px rgba(0, 0, 0, 0.05),
       0 2px 4px -1px rgba(0, 0, 0, 0.03);
@@ -90,14 +90,14 @@
     margin: 0;
     font-size: 16px;
     font-weight: 800;
-    color: #1a1a1a;
+    color: var(--text-main);
     line-height: 1.2;
   }
 
   .menu-desc {
     margin: 4px 0 12px 0;
     font-size: 12px;
-    color: #777;
+    color: var(--text-muted);
     line-height: 1.5;
     display: -webkit-box;
     -webkit-line-clamp: 2;

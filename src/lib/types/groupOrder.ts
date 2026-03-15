@@ -8,6 +8,10 @@ export interface OrderRoom {
     status: 'open' | 'closed' | 'sent';
     is_shop_managed?: boolean | null;
     created_at: string;
+    schedule_type?: 'once' | 'recurring';
+    schedule_days?: string[];
+    opening_time_daily?: string | null;
+    closing_time_daily?: string | null;
     participant_count?: number; // Virtual field for UI
 }
 
@@ -20,4 +24,5 @@ export interface GroupOrderParticipant {
     status: string;
     transfer_proof_url?: string;
     payment_status: 'none' | 'pending' | 'verified';
+    is_archived?: boolean;
 }

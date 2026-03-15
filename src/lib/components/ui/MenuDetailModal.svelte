@@ -445,7 +445,7 @@
                                 <button
                                     on:click={() =>
                                         (quantity = Math.max(1, quantity - 1))}
-                                    class="w-10 h-10 rounded-2xl bg-gray-50 text-gray-900 flex items-center justify-center hover:bg-gray-100 transition-colors"
+                                    class="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors"
                                 >
                                     <Minus size={20} />
                                 </button>
@@ -454,7 +454,7 @@
                                 >
                                 <button
                                     on:click={() => quantity++}
-                                    class="w-10 h-10 rounded-2xl bg-gray-900 text-white flex items-center justify-center hover:bg-gray-800 transition-colors shadow-lg shadow-gray-200"
+                                    class="w-10 h-10 rounded-2xl bg-primary text-white flex items-center justify-center hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
                                 >
                                     <Plus size={20} />
                                 </button>
@@ -496,7 +496,7 @@
                         on:click={() => handleAddToCart(true)}
                         disabled={!isValid || loadingOptions}
                         class="flex-[1.5] h-14 rounded-2xl font-black text-sm flex items-center justify-center gap-3 shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 disabled:bg-gray-200 disabled:text-gray-400 {isValid
-                            ? 'bg-gray-900 text-white'
+                            ? 'bg-accent text-white shadow-accent/30'
                             : 'bg-gray-100 text-gray-400'}"
                     >
                         <ShoppingBag size={20} />

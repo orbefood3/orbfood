@@ -82,8 +82,10 @@
   }
 
   .profile-header {
-    padding: 32px 20px;
+    padding: 24px 16px 20px 16px;
     color: white;
+    border-radius: 0 0 22px 22px;
+    box-shadow: 0 16px 30px -24px rgba(15, 42, 68, 0.85);
   }
 
   .user-info {
@@ -93,10 +95,10 @@
   }
 
   .avatar {
-    width: 64px;
-    height: 64px;
+    width: 68px;
+    height: 68px;
     border-radius: 50%;
-    border: 3px solid rgba(255, 255, 255, 0.2);
+    border: 3px solid rgba(255, 255, 255, 0.32);
   }
 
   .text-info h2 {
@@ -121,16 +123,16 @@
   }
 
   .profile-menu {
-    padding: 20px 16px;
+    padding: 18px 14px 26px 14px;
     display: flex;
     flex-direction: column;
     gap: 12px;
   }
 
   .buka-toko-card {
-    background: white;
+    background: linear-gradient(180deg, #ffffff 0%, #fff7ed 100%);
     padding: 16px;
-    border: 1px solid var(--bg-soft);
+    border: 1px solid #fed7aa;
     text-align: left;
     margin-bottom: 8px;
   }
@@ -144,7 +146,7 @@
   .buka-toko-content h3 {
     margin: 0;
     font-size: 16px;
-    color: var(--primary);
+    color: var(--accent);
   }
 
   .buka-toko-content p {
@@ -156,11 +158,13 @@
   .menu-item {
     display: flex;
     align-items: center;
-    padding: 16px 20px;
+    padding: 14px 16px;
     background: white;
-    border-radius: 12px;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
     text-align: left;
     gap: 16px;
+    box-shadow: 0 8px 20px -20px rgba(15, 42, 68, 0.55);
   }
 
   .menu-icon {
@@ -171,8 +175,8 @@
 
   .menu-label {
     flex: 1;
-    font-size: 15px;
-    font-weight: 500;
+    font-size: 14px;
+    font-weight: 700;
     color: var(--text-main);
   }
 
@@ -184,5 +188,10 @@
 
   .logout-btn .menu-label {
     color: var(--danger);
+  }
+
+  .logout-btn {
+    border-color: #fecaca;
+    background: #fef2f2;
   }
 </style>

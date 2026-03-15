@@ -25,7 +25,7 @@
     />
     {#if item.is_delivery_available}
       <div
-        class="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm text-blue-600 animate-in zoom-in duration-300"
+        class="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm text-primary animate-in zoom-in duration-300"
       >
         <Truck size={12} strokeWidth={3} />
       </div>

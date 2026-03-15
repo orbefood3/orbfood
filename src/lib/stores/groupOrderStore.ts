@@ -6,12 +6,12 @@ function createGroupOrderStore() {
 
     return {
         subscribe,
-        setRoom: (room: OrderRoom) => {
+        setGroup: (room: OrderRoom) => {
             // Persist to localStorage to survive refreshes
             localStorage.setItem('activeGroupOrder', JSON.stringify(room));
             set(room);
         },
-        clearRoom: () => {
+        clearGroup: () => {
             localStorage.removeItem('activeGroupOrder');
             set(null);
         },
@@ -19,7 +19,17 @@ function createGroupOrderStore() {
             const stored = localStorage.getItem('activeGroupOrder');
             if (stored) {
                 try {
-                    set(JSON.parse(stored));
+                    const room = JSON.parse(stored) as OrderRoom;
+                    // Auto-clear if already past closing time (expired)
+                    const isExpired = room.closing_time && new Date(room.closing_time) < new Date();
+                    const isInvalid = room.status && room.status !== 'open';
+
+                    if (isExpired || isInvalid) {
+                        localStorage.removeItem('activeGroupOrder');
+                        set(null);
+                    } else {
+                        set(room);
+                    }
                 } catch (e) {
                     console.error("Failed to parse stored group order", e);
                     localStorage.removeItem('activeGroupOrder');

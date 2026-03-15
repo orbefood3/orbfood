@@ -101,9 +101,9 @@
                         <div
                             class="bg-gray-50 rounded-xl p-4 border border-gray-100"
                         >
-                            <label
+                            <span
                                 class="text-xs font-bold text-gray-500 uppercase"
-                                >Bank</label
+                                >Bank</span
                             >
                             <div class="flex items-center justify-between mt-2">
                                 <p class="text-lg font-black text-gray-900">
@@ -116,9 +116,9 @@
                         <div
                             class="bg-gray-50 rounded-xl p-4 border border-gray-100"
                         >
-                            <label
+                            <span
                                 class="text-xs font-bold text-gray-500 uppercase"
-                                >Nomor Rekening</label
+                                >Nomor Rekening</span
                             >
                             <div
                                 class="flex items-center justify-between mt-2 gap-3"
@@ -150,9 +150,9 @@
                         <div
                             class="bg-gray-50 rounded-xl p-4 border border-gray-100"
                         >
-                            <label
+                            <span
                                 class="text-xs font-bold text-gray-500 uppercase"
-                                >Atas Nama</label
+                                >Atas Nama</span
                             >
                             <div class="flex items-center justify-between mt-2">
                                 <p class="text-lg font-black text-gray-900">

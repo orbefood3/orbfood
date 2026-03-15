@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { supabase } from "../../services/supabase";
+    import PageWrapper from "../../components/ui/PageWrapper.svelte";
     import {
         Plus,
         Search,
@@ -98,6 +99,7 @@
     }
 </script>
 
+<PageWrapper>
 <div class="space-y-6">
     <!-- Header & Actions -->
     <div
@@ -111,7 +113,7 @@
         </div>
 
         <div class="flex items-center gap-3">
-            <div class="relative flex-1 md:w-64">
+            <div class="relative w-full md:w-64">
                 <Search
                     class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
                 />
@@ -119,12 +121,12 @@
                     type="text"
                     bind:value={searchTerm}
                     placeholder="Cari desa..."
-                    class="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    class="w-full h-10 pl-10 pr-4 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                 />
             </div>
             <button
                 on:click={() => openModal()}
-                class="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition-all shadow-sm"
+                class="h-10 whitespace-nowrap flex items-center gap-2 px-4 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition-all shadow-sm"
             >
                 <Plus class="w-4 h-4" />
                 Tambah Desa
@@ -223,6 +225,7 @@
         {/if}
     </div>
 </div>
+</PageWrapper>
 
 <!-- Modal Village -->
 {#if showModal}

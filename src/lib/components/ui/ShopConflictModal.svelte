@@ -34,14 +34,14 @@
             <div class="pt-8 pb-4 flex flex-col items-center">
                 <div class="relative mb-4">
                     <div
-                        class="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center text-orange-500 animate-pulse"
+                        class="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center text-accent animate-pulse"
                     >
                         <ShoppingBag size={36} strokeWidth={2.5} />
                     </div>
                     <div
-                        class="absolute -right-1 -bottom-1 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-orange-50"
+                        class="absolute -right-1 -bottom-1 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-accent/10"
                     >
-                        <AlertTriangle size={16} class="text-orange-600" />
+                        <AlertTriangle size={16} class="text-accent" />
                     </div>
                 </div>
                 <h3 class="text-xl font-black text-gray-900 px-6 text-center">
@@ -56,7 +56,7 @@
                         class="font-black text-gray-900">"{newStoreName}"</span
                     >. Keranjang belanjaanmu sebelumnya akan
                     <span
-                        class="text-orange-600 font-bold underline decoration-orange-200 decoration-2"
+                        class="text-accent font-bold underline decoration-accent/30 decoration-2"
                         >dihapus</span
                     > ya. Lanjut?
                 </p>
@@ -64,7 +64,7 @@
                 <div class="flex flex-col gap-3">
                     <button
                         on:click={handleConfirm}
-                        class="w-full flex items-center justify-center gap-2 py-4 bg-gray-900 text-white rounded-2xl font-black text-sm shadow-xl shadow-gray-200 active:scale-[0.98] transition-all"
+                        class="w-full flex items-center justify-center gap-2 py-4 bg-accent text-white rounded-2xl font-black text-sm shadow-xl shadow-accent/20 active:scale-[0.98] transition-all"
                     >
                         <Trash2 size={18} />
                         Hapus & Ganti Toko

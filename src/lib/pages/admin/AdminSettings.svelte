@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { supabase } from "../../services/supabase";
+  import PageWrapper from "../../components/ui/PageWrapper.svelte";
 
   let settings: any = {
     platform_name: "OrbFood",
@@ -36,7 +37,7 @@
   }
 </script>
 
-<div class="content-padding">
+<PageWrapper>
   {#if loading}
     <div class="flex justify-center p-12">
       <div
@@ -44,7 +45,7 @@
       ></div>
     </div>
   {:else}
-    <div class="max-w-2xl mx-auto space-y-6">
+    <div class="max-w-3xl mx-auto space-y-6">
       <div class="space-y-2">
         <h2 class="text-2xl font-bold tracking-tight text-gray-900">
           Pengaturan Platform
@@ -53,20 +54,20 @@
       </div>
 
       <div
-        class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+        class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden"
       >
-        <div class="p-6 space-y-6">
-          <div class="space-y-4">
-            <div class="grid gap-2">
+        <div class="p-6 md:p-8 space-y-6">
+          <div class="grid gap-5 md:grid-cols-2">
+            <div class="grid gap-2 md:col-span-2">
               <label
                 for="platform_name"
-                class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                class="text-sm font-semibold text-gray-700"
                 >Nama Platform</label
               >
               <input
                 id="platform_name"
                 bind:value={settings.platform_name}
-                class="flex h-10 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                class="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                 placeholder="Masukkan nama platform"
               />
             </div>
@@ -74,14 +75,14 @@
             <div class="grid gap-2">
               <label
                 for="admin_whatsapp"
-                class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                class="text-sm font-semibold text-gray-700"
                 >WhatsApp Admin</label
               >
               <input
                 id="admin_whatsapp"
                 bind:value={settings.admin_whatsapp}
                 placeholder="628xxx"
-                class="flex h-10 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                class="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
               />
               <p class="text-[0.8rem] text-gray-500">
                 Nomor ini akan digunakan sebagai kontak bantuan utama.
@@ -91,35 +92,35 @@
             <div class="grid gap-2">
               <label
                 for="platform_hours"
-                class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                class="text-sm font-semibold text-gray-700"
                 >Jam Operasional Platform</label
               >
               <input
                 id="platform_hours"
                 bind:value={settings.platform_hours}
-                class="flex h-10 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                class="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
               />
             </div>
 
-            <div class="grid gap-2">
+            <div class="grid gap-2 md:col-span-2">
               <label
                 for="announcement_banner"
-                class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                class="text-sm font-semibold text-gray-700"
                 >Banner Pengumuman (Opsional)</label
               >
               <textarea
                 id="announcement_banner"
                 bind:value={settings.announcement_banner}
                 placeholder="Teks pengumuman yang muncul di aplikasi"
-                class="flex min-h-[80px] w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                class="min-h-[96px] w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
               ></textarea>
             </div>
           </div>
         </div>
-        <div class="flex items-center p-6 pt-0">
+        <div class="flex items-center p-6 md:px-8 pt-0">
           <button
             on:click={saveSettings}
-            class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-gray-900 text-gray-50 hover:bg-gray-900/90 h-10 px-4 py-2 w-full"
+            class="inline-flex h-11 w-full items-center justify-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/20"
           >
             Simpan Perubahan
           </button>
@@ -127,12 +128,4 @@
       </div>
     </div>
   {/if}
-</div>
-
-<style>
-  .content-padding {
-    padding: 24px;
-    max-width: 1280px;
-    margin: 0 auto;
-  }
-</style>
+</PageWrapper>

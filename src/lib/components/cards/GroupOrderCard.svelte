@@ -59,17 +59,17 @@
             <h3 class="font-bold text-gray-800">{room.name}</h3>
             <div class="flex items-center text-xs text-gray-500 mt-1">
                 <span
-                    class="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-mono mr-2"
+                    class="bg-primary/10 text-primary px-1.5 py-0.5 rounded font-mono mr-2"
                 >
                     {room.short_code}
                 </span>
                 <User size={12} class="mr-1" />
-                <span>{room.participant_count || 0} orang bergabung</span>
+                <span>{room.participant_count || 0} orang di grup</span>
             </div>
         </div>
 
         <div class="text-right">
-            <div class="flex items-center text-red-600 font-bold text-sm">
+            <div class="flex items-center text-accent font-bold text-sm">
                 <Clock size={14} class="mr-1" />
                 {timeLeft}
             </div>
@@ -90,7 +90,7 @@
             on:click={() => onJoin(room)}
             disabled={isExpired}
         >
-            Gabung
+            Ikut Pesan
             <ArrowRight size={16} />
         </button>
     </div>

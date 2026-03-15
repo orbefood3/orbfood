@@ -13,22 +13,51 @@
     export let storeName: string;
     export let isLoading = false;
     export let isShopOwner = false; // New prop to detect if user is shop owner
+    export let initialData: any = null; // New prop for editing an existing group
 
     const dispatch = createEventDispatcher();
 
-    let roomName = `${storeName} Order`;
+    let groupName = `${storeName} Group`;
     let duration = 30; // minutes
     let useFixedTime = false;
     let fixedTime = ""; // HH:mm
     let openingTime = ""; // For shop owners only (HH:mm)
 
-    // Payment method fields
     let paymentMethod: "qris" | "bank_transfer" = "qris";
     let qrisFile: File | null = null;
     let qrisPreview: string | null = null;
     let bankName = "";
     let bankAccountNumber = "";
     let bankAccountName = "";
+
+    // Schedule Fields
+    let scheduleType: "once" | "recurring" = "once";
+    let scheduleDays: string[] = [];
+    const daysOfWeek = [
+        { id: "monday", label: "Senin" },
+        { id: "tuesday", label: "Selasa" },
+        { id: "wednesday", label: "Rabu" },
+        { id: "thursday", label: "Kamis" },
+        { id: "friday", label: "Jumat" },
+        { id: "saturday", label: "Sabtu" },
+        { id: "sunday", label: "Minggu" }
+    ];
+
+    function toggleDay(day: string) {
+        if (scheduleDays.includes(day)) {
+            scheduleDays = scheduleDays.filter(d => d !== day);
+        } else {
+            scheduleDays = [...scheduleDays, day];
+        }
+    }
+
+    function toggleAllDays() {
+        if (scheduleDays.length === 7) {
+            scheduleDays = [];
+        } else {
+            scheduleDays = daysOfWeek.map(d => d.id);
+        }
+    }
 
     const durationOptions = [
         { label: "15 Menit", value: 15 },
@@ -56,23 +85,44 @@
             .single();
 
         if (profile) {
-            if (profile.payment_method) {
-                paymentMethod = profile.payment_method as
-                    | "qris"
-                    | "bank_transfer";
+            // Apply profile defaults only if we aren't editing and the profile has them
+            if (!initialData) {
+                if (profile.payment_method) {
+                    paymentMethod = profile.payment_method as "qris" | "bank_transfer";
+                }
+                if (profile.qris_image_url) {
+                    qrisPreview = profile.qris_image_url;
+                }
+                if (profile.bank_name) {
+                    bankName = profile.bank_name;
+                }
+                if (profile.bank_account_number) {
+                    bankAccountNumber = profile.bank_account_number;
+                }
+                if (profile.bank_account_name) {
+                    bankAccountName = profile.bank_account_name;
+                }
             }
-            if (profile.qris_image_url) {
-                qrisPreview = profile.qris_image_url;
+        }
+
+        // Initialize Edit Data if provided
+        if (initialData) {
+            groupName = initialData.name;
+            scheduleType = initialData.schedule_type || "once";
+            if (scheduleType === "recurring") {
+                scheduleDays = initialData.schedule_days || [];
+                fixedTime = initialData.closing_time_daily ? initialData.closing_time_daily.substring(0, 5) : "";
+                openingTime = initialData.opening_time_daily ? initialData.opening_time_daily.substring(0, 5) : "";
+            } else {
+                useFixedTime = true;
+                const cDate = new Date(initialData.closing_time);
+                fixedTime = `${cDate.getHours().toString().padStart(2, '0')}:${cDate.getMinutes().toString().padStart(2, '0')}`;
             }
-            if (profile.bank_name) {
-                bankName = profile.bank_name;
-            }
-            if (profile.bank_account_number) {
-                bankAccountNumber = profile.bank_account_number;
-            }
-            if (profile.bank_account_name) {
-                bankAccountName = profile.bank_account_name;
-            }
+
+            // For existing payment methods, those are tied to the creator/shop profile, 
+            // but we allow edits to flow through. Since this is for shop owners primarily,
+            // the profile fetch above or the original auth handles the state, but we ensure
+            // the UI reflects what they want to change.
         }
     });
 
@@ -128,13 +178,13 @@
     }
 
     async function handleSubmit() {
-        if (!roomName.trim()) {
-            alert("Nama room wajib diisi!");
+        if (!groupName.trim()) {
+            alert("Nama grup wajib diisi!");
             return;
         }
 
         // Validate payment method
-        if (paymentMethod === "qris" && !qrisFile) {
+        if (paymentMethod === "qris" && !qrisFile && !qrisPreview) {
             alert("Upload QRIS wajib untuk metode QRIS!");
             return;
         }
@@ -164,20 +214,36 @@
 
         // Calculate opening time (shop owners only)
         let openingTimeISO = null;
+        let openingTimeDaily = null;
         if (isShopOwner && openingTime) {
+            openingTimeDaily = `${openingTime}:00`;
             const [hours, minutes] = openingTime.split(":").map(Number);
             const openingDate = new Date();
             openingDate.setHours(hours, minutes, 0, 0);
-            if (openingDate >= new Date(closingTimeISO)) {
-                // Opening time should be before closing time
+            if (scheduleType === "once" && openingDate >= new Date(closingTimeISO)) {
                 alert("Waktu buka harus sebelum waktu tutup!");
                 return;
             }
             openingTimeISO = openingDate.toISOString();
         }
 
-        // Use Base64 QRIS directly from preview (already compressed on selection)
+        let closingTimeDaily = null;
+        if (scheduleType === "recurring") {
+            if (scheduleDays.length === 0) {
+                alert("Pilih minimal satu hari untuk jadwal berulang!");
+                return;
+            }
+            if (!fixedTime) {
+                alert("Waktu tutup wajib diisi untuk jadwal berulang!");
+                return;
+            }
+            closingTimeDaily = `${fixedTime}:00`;
+        }
+
+        // Use Base64 QRIS directly from preview (already compressed on selection) or existing URL
         let qrisUrl = qrisPreview;
+        
+        // Only upload to storage if it's a NEW file
         if (qrisFile) {
             const {
                 data: { user },
@@ -238,9 +304,13 @@
         }
 
         dispatch("submit", {
-            name: roomName,
+            name: groupName,
             closingTime: closingTimeISO,
             openingTime: openingTimeISO,
+            scheduleType: isShopOwner ? scheduleType : "once",
+            scheduleDays,
+            openingTimeDaily,
+            closingTimeDaily
         });
     }
 </script>
@@ -257,7 +327,7 @@
         >
             <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
                 <Users size={20} class="text-primary" />
-                Buat Group Order
+                {initialData ? "Edit Group Order" : "Buat Kode Group Order"}
             </h2>
             <button
                 on:click={() => dispatch("close")}
@@ -274,25 +344,103 @@
                 <label
                     for="room-name"
                     class="block text-sm font-medium text-gray-700 mb-1"
-                    >Nama Room</label
+                    >Nama/Catatan Grup</label
                 >
                 <input
-                    id="room-name"
+                    id="group-name"
                     type="text"
-                    bind:value={roomName}
+                    bind:value={groupName}
                     class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                 />
+                <p class="text-[10px] text-gray-400 mt-1 italic">
+                    *Sistem akan otomatis membuat Kode Unik untuk grup ini.
+                </p>
             </div>
+
+            <!-- Schedule Type (Shop Owners Only) -->
+            {#if isShopOwner}
+                <div class="border-b pb-4">
+                    <span class="block text-sm font-medium text-gray-700 mb-2">
+                        Tipe Jadwal Grup
+                    </span>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <button
+                            type="button"
+                            on:click={() => (scheduleType = "once")}
+                            class="py-2 border rounded-xl font-bold transition-all text-sm {scheduleType === 'once' ? 'bg-primary text-white border-primary shadow-md' : 'bg-gray-50 text-gray-500 border-gray-200'}"
+                        >
+                            Sekali Buka
+                        </button>
+                        <button
+                            type="button"
+                            on:click={() => (scheduleType = "recurring")}
+                            class="py-2 border rounded-xl font-bold transition-all text-sm {scheduleType === 'recurring' ? 'bg-primary text-white border-primary shadow-md' : 'bg-gray-50 text-gray-500 border-gray-200'}"
+                        >
+                            Jadwal Berulang
+                        </button>
+                    </div>
+
+                    {#if scheduleType === "recurring"}
+                        <div class="animate-in fade-in slide-in-from-top-2 p-3 bg-blue-50/50 rounded-xl border border-blue-100">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="block text-xs font-black text-gray-700 uppercase tracking-widest">
+                                    Hari Order Buka
+                                </span>
+                                <div class="flex items-center gap-2">
+                                    {#if scheduleDays.length > 0}
+                                        <button
+                                            type="button"
+                                            class="text-[10px] font-bold text-red-400 hover:text-red-600 px-2 py-0.5 rounded-md bg-red-50 hover:bg-red-100 transition-all flex items-center gap-1"
+                                            on:click={() => (scheduleDays = [])}
+                                        >
+                                            <X size={10} /> Reset
+                                        </button>
+                                    {/if}
+                                    <button
+                                        type="button"
+                                        class="text-[10px] font-bold text-primary px-2 py-1 bg-primary/10 rounded-md"
+                                        on:click={toggleAllDays}
+                                    >
+                                        {scheduleDays.length === 7 ? "Batal Pilih" : "Full Seminggu"}
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                {#each daysOfWeek as day}
+                                    <button
+                                        type="button"
+                                        on:click={() => toggleDay(day.id)}
+                                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all border {scheduleDays.includes(day.id) ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}"
+                                    >
+                                        {day.label}
+                                    </button>
+                                {/each}
+                            </div>
+                        </div>
+                    {/if}
+                </div>
+            {/if}
 
             <!-- Opening Time (Shop Owners Only) -->
             {#if isShopOwner}
                 <div>
-                    <label
-                        for="opening-time"
-                        class="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                        Waktu Buka Room (Opsional)
-                    </label>
+                    <div class="flex justify-between items-center mb-1">
+                        <label
+                            for="opening-time"
+                            class="block text-sm font-medium text-gray-700"
+                        >
+                            Waktu Buka Grup <span class="text-[10px] text-gray-400 font-normal">(Opsional)</span>
+                        </label>
+                        {#if openingTime}
+                            <button
+                                type="button"
+                                class="text-[10px] font-bold text-red-400 hover:text-red-600 px-2 py-0.5 rounded-md bg-red-50 hover:bg-red-100 transition-all flex items-center gap-1"
+                                on:click={() => (openingTime = "")}
+                            >
+                                <X size={10} /> Reset
+                            </button>
+                        {/if}
+                    </div>
                     <input
                         id="opening-time"
                         type="time"
@@ -314,20 +462,40 @@
                         id="duration-label"
                         class="block text-sm font-medium text-gray-700"
                     >
-                        Batas Waktu Order
+                        Batas Waktu Order {scheduleType === "recurring" ? "Harian" : ""}
                     </label>
-                    <button
-                        type="button"
-                        class="text-[10px] font-black uppercase tracking-wider {useFixedTime
-                            ? 'text-primary'
-                            : 'text-gray-400'}"
-                        on:click={() => (useFixedTime = !useFixedTime)}
-                    >
-                        {useFixedTime ? "Gunakan Durasi" : "Atur Jam Tetap"}
-                    </button>
+                    <div class="flex items-center gap-2">
+                        {#if (useFixedTime || scheduleType === "recurring") && fixedTime}
+                            <button
+                                type="button"
+                                class="text-[10px] font-bold text-red-400 hover:text-red-600 px-2 py-0.5 rounded-md bg-red-50 hover:bg-red-100 transition-all flex items-center gap-1"
+                                on:click={() => {
+                                    fixedTime = "";
+                                    if (scheduleType === "once") useFixedTime = false;
+                                }}
+                            >
+                                <X size={10} /> Reset
+                            </button>
+                        {/if}
+                        <button
+                            type="button"
+                            class="text-[10px] font-black uppercase tracking-wider {(scheduleType === 'once' && useFixedTime) || scheduleType === 'recurring'
+                                ? 'text-primary'
+                                : 'text-gray-400'}"
+                            on:click={() => {
+                                if (scheduleType === 'once') {
+                                    useFixedTime = !useFixedTime;
+                                    if (!useFixedTime) fixedTime = "";
+                                }
+                            }}
+                            disabled={scheduleType === "recurring"}
+                        >
+                            {scheduleType === "recurring" ? "Wajib Jam Tetap" : useFixedTime ? "Gunakan Durasi" : "Atur Jam Tetap"}
+                        </button>
+                    </div>
                 </div>
 
-                {#if useFixedTime}
+                {#if useFixedTime || scheduleType === "recurring"}
                     <div
                         class="animate-in fade-in slide-in-from-top-1 duration-200"
                     >
@@ -338,14 +506,13 @@
                             class="w-full px-4 py-3 border-2 border-gray-100 rounded-xl focus:border-primary outline-none text-lg font-bold"
                         />
                         <p class="text-[10px] text-gray-400 mt-2 font-medium">
-                            Room akan otomatis ditutup pada jam yang ditentukan.
+                            Grup akan otomatis ditutup pada jam yang ditentukan.
                         </p>
                     </div>
                 {:else}
                     <div
                         class="grid grid-cols-3 gap-2"
                         role="group"
-                        aria-labelledby="duration-label"
                     >
                         {#each durationOptions as option}
                             <button
@@ -408,6 +575,7 @@
                 {#if paymentMethod === "qris"}
                     <div class="space-y-2">
                         <label
+                            for="qris-upload-input"
                             class="block text-xs font-bold text-gray-500 uppercase"
                         >
                             Upload QRIS Code <span class="text-red-500">*</span>
@@ -439,6 +607,7 @@
                                     Klik untuk upload QRIS
                                 </span>
                                 <input
+                                    id="qris-upload-input"
                                     type="file"
                                     accept="image/*"
                                     on:change={handleQrisUpload}
@@ -454,11 +623,13 @@
                     <div class="space-y-3">
                         <div>
                             <label
+                                for="bank-name-input"
                                 class="block text-xs font-bold text-gray-500 uppercase mb-1"
                             >
                                 Nama Bank <span class="text-red-500">*</span>
                             </label>
                             <input
+                                id="bank-name-input"
                                 type="text"
                                 bind:value={bankName}
                                 placeholder="Contoh: BCA, Mandiri, BNI"
@@ -467,6 +638,7 @@
                         </div>
                         <div>
                             <label
+                                for="bank-account-number-input"
                                 class="block text-xs font-bold text-gray-500 uppercase mb-1"
                             >
                                 Nomor Rekening <span class="text-red-500"
@@ -474,6 +646,7 @@
                                 >
                             </label>
                             <input
+                                id="bank-account-number-input"
                                 type="text"
                                 bind:value={bankAccountNumber}
                                 placeholder="1234567890"
@@ -482,11 +655,13 @@
                         </div>
                         <div>
                             <label
+                                for="bank-account-name-input"
                                 class="block text-xs font-bold text-gray-500 uppercase mb-1"
                             >
                                 Atas Nama <span class="text-red-500">*</span>
                             </label>
                             <input
+                                id="bank-account-name-input"
                                 type="text"
                                 bind:value={bankAccountName}
                                 placeholder="Nama Pemilik Rekening"
@@ -518,7 +693,7 @@
                         class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
                     ></div>
                 {/if}
-                Buat Room
+                Buat Kode Grup
             </button>
         </div>
     </div>
